@@ -200,7 +200,7 @@ void testdrawbitmap(const uint8_t *bitmap, uint8_t w, uint8_t h) {
       display.drawBitmap(icons[f][XPOS], icons[f][YPOS], logo16_glcd_bmp, w, h, WHITE);
     }
     display.display();
-    delay(200);
+    delay(50);
     
     // then erase it + move it
     for (uint8_t f=0; f< NUMFLAKES; f++) {

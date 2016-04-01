@@ -2,6 +2,7 @@
 // based on: Example of AP_OpticalFlow library by Randy Mackay. DIYDrones.com
 //
 
+#include <stdarg.h>
 #include <SPI.h>
 #include "ADNS3080.h"
 
@@ -246,7 +247,7 @@ boolean initOF()
   SPI.begin();
   SPI.setBitOrder(MSBFIRST); // Set the SPI_1 bit order
   SPI.setDataMode(SPI_MODE3);
-  SPI.setClockDivider(SPI_CLOCK_DIV32);      // Slow speed (72 / 16 = 4.5 MHz SPI_1 speed)
+  SPI.setClockDivider(SPI_CLOCK_DIV64);      // Slow speed (72 / 16 = 4.5 MHz SPI_1 speed)
 
   // check the sensor is functioning
   if( retry < 3 ) {
@@ -333,40 +334,90 @@ void write_register(byte address, byte value)
 }
 
 
+byte rxbuf[902];
+
+
+void printf2(char *fmt, ... )
+{
+    char buf[100];
+    va_list args;
+
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    Serial.print(buf);
+}
+
 // get_pixel_data - captures an image from the sensor and stores it to the pixe_data array
 void print_pixel_data(Stream *serPort)
 {
-  int i,j;
-  boolean isFirstPixel = true;
-  byte regValue;
-  byte pixelValue;
+    int i,j;
+    int cnt;
+    boolean isFirstPixel = true;
+    boolean bFoundFirst = false;
+    byte regValue;
+    byte pixelValue;
+    byte txCmd;
 
-  // write to frame capture register to force capture of frame
-  write_register(ADNS3080_FRAME_CAPTURE,0x83);
+    // write to frame capture register to force capture of frame
+    write_register(ADNS3080_FRAME_CAPTURE, 0x83);
 
-  // wait 3 frame periods + 10 nanoseconds for frame to be captured
-  delayMicroseconds(1510);  // min frame speed is 2000 frames/second so 1 frame = 500 nano seconds.  so 500 x 3 + 10 = 1510
+    // wait 3 frame periods + 10 nanoseconds for frame to be captured
+    delayMicroseconds(1510);  // min frame speed is 2000 frames/second so 1 frame = 500 nano seconds.  so 500 x 3 + 10 = 1510
 
-  // display the pixel data
-  for( i=0; i<ADNS3080_PIXELS_Y; i++ ) {
-    for( j=0; j<ADNS3080_PIXELS_X; j++ ) {
-      regValue = read_register(ADNS3080_FRAME_CAPTURE);
-      if( isFirstPixel && (regValue & 0x40) == 0 ) {
-        serPort->println("failed to find first pixel");
-      }
-      isFirstPixel = false;
-      pixelValue = ( regValue << 2);
-      serPort->print(pixelValue,DEC);
-      if( j!= ADNS3080_PIXELS_X-1 )
-        serPort->print(",");
-      delayMicroseconds(50);
+#if 1
+    digitalWrite(_cs_pin, LOW);
+    txCmd = ADNS3080_PIXEL_BURST;
+    SPI.dmaTransfer(txCmd, rxbuf, sizeof(rxbuf));
+    digitalWrite(_cs_pin, HIGH);
+
+    for (i = 0; i < sizeof(rxbuf); i++) {
+        if (!bFoundFirst) {
+            if (rxbuf[i] & 0x40) {
+                bFoundFirst = true;
+                cnt = 0;
+            }
+        }
+
+        if (bFoundFirst) {
+            pixelValue = (rxbuf[i] << 2);
+            //pixelValue = (rxbuf[i]);
+            serPort->print(pixelValue, DEC);
+            //printf2("%02X", pixelValue);
+            cnt++;
+            if((cnt % ADNS3080_PIXELS_X) != 0) {
+                serPort->print(",");
+            } else {
+                serPort->println();
+            }
+        }
     }
-    serPort->println();
-  }
 
-  // hardware reset to restore sensor to normal operation
-  reset();
+#else
+
+    // display the pixel data
+    for( i=0; i<ADNS3080_PIXELS_Y; i++ ) {
+        for( j=0; j<ADNS3080_PIXELS_X; j++ ) {
+        regValue = read_register(ADNS3080_FRAME_CAPTURE);
+        if( isFirstPixel && (regValue & 0x40) == 0 ) {
+        serPort->println("failed to find first pixel");
+        }
+        isFirstPixel = false;
+        pixelValue = ( regValue << 2);
+        serPort->print(pixelValue,DEC);
+        if( j!= ADNS3080_PIXELS_X-1 )
+        serPort->print(",");
+        delayMicroseconds(50);
+        }
+        serPort->println();
+    }
+#endif
+
+    // hardware reset to restore sensor to normal operation
+    reset();
 }
+
+
 
 bool updateOF()
 {
