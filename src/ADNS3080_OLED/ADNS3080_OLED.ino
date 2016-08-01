@@ -41,9 +41,13 @@ void setup()
 
 void loop() 
 {
+#if 0    
     Serial.println("image data --------------");
     sendData();
     Serial.println("-------------------------");
+#else
+    dispMovement();
+#endif
 }
 
 static byte getPixel(int x, int y, byte *buf, int stride)
@@ -123,7 +127,6 @@ byte readReg(byte address)
 {
     byte result = 0, junk = 0;
 
-
     digitalWrite(_cs_pin, LOW);
     junk = SPI.transfer(address);
     delayMicroseconds(50);
@@ -190,10 +193,10 @@ void sendData(void)
             if (rxbuf[i] & 0x40) {
                 bFoundFirst = true;
                 cnt = 0;
-                break;
+                //break;
             }
         }
-/*
+
         if (bFoundFirst) {
             pixelValue = (rxbuf[i] << 2);
             Serial.print(pixelValue, DEC);
@@ -204,9 +207,9 @@ void sendData(void)
                 Serial.println();
             }
         }
-*/        
+        
     }
-
+/*
     display.clearDisplay();
     byte *img = &rxbuf[i];
     dither(img, ADNS3080_PIXELS_X, ADNS3080_PIXELS_Y);
@@ -227,6 +230,61 @@ void sendData(void)
         }
     }
     display.display();
+*/    
     reset();
+}
+
+int cnv2Complement(byte in)
+{
+    int ret = in;
+    
+    if (in & 0x80) {
+        ret = -(0x100 - in);
+    }
+
+    return ret;
+}
+
+void dispMovement()
+{
+    byte motion_reg;
+    int  quality;
+    int  sum_dx, sum_dy;
+    signed char dx, dy;
+    char buf[50];
+
+    sum_dx = 0;
+    sum_dy = 0;
+
+    motion_reg = readReg(ADNS3080_MOTION);
+
+    if (motion_reg & 0x80) {
+
+        quality = (unsigned int)readReg(ADNS3080_SQUAL);
+        
+        do {
+            if (motion_reg & 0x80) {
+                dx = (signed char)readReg(ADNS3080_DELTA_X);
+                dy = (signed char)readReg(ADNS3080_DELTA_Y);
+                if (motion_reg & 0x01) {
+                    dx = dx * 4;
+                    dy = dy * 4;
+                }
+                sum_dx += dx;
+                sum_dy += dy;
+            }
+            // check for movement, update x,y values
+            motion_reg = readReg(ADNS3080_MOTION);
+        } while (motion_reg & 0x20);
+
+        display.setTextSize(2);
+        display.setTextColor(WHITE);
+        display.setCursor(0, 0);
+        display.clearDisplay();
+        sprintf(buf, "DX:%3d\nDY:%3d\nQ :%3d\n", sum_dx, sum_dy, quality);
+        display.println(buf);
+        Serial.println(buf);
+        display.display();
+    }
 }
 
