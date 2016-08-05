@@ -46,7 +46,7 @@ void DeviceNRF24L01::initialize()
 
     mSPI->setBitOrder(MSBFIRST);
     mSPI->setDataMode(SPI_MODE0);
-    mSPI->setClockDivider(SPI_CLOCK_DIV8);
+    mSPI->setClockDivider(SPI_CLOCK_DIV4);
     mRFsetup = 0x0F;
 }
 

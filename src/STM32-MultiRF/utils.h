@@ -43,10 +43,12 @@ template <typename T> T PROGMEM_get(const T * sce)
 #if __DEBUG__
     void LOG(char *fmt, ... );
     void DUMP(char *name, u8 *data, u16 cnt);
+    void DRAIN_LOG(void);
     #define __PRINT_FUNC__  //LOG(F("%08ld : %s\n"), millis(), __PRETTY_FUNCTION__);
 #else
     #define LOG(...)
     #define DUMP(...)
+    #define DRAIN_LOG()
     #define __PRINT_FUNC__
 #endif
 

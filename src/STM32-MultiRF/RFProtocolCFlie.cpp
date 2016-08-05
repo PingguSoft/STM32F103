@@ -272,6 +272,7 @@ int RFProtocolCFlie::init(void)
 {
     mPacketCtr = 0;
 
+    RFProtocol::registerCallback(this);
     initRxTxAddr();
     init1();
     startState(INITIAL_WAIT_uS);

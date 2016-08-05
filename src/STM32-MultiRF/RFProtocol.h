@@ -125,7 +125,6 @@ public:
     Telemetry getTM(void)           { return mTM;   }
 
     // for protocol
-    virtual void loop(u32 now);
     virtual int  init(void);
     virtual int  close(void);
     virtual int  reset(void);

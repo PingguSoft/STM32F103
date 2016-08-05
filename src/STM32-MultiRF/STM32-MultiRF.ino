@@ -32,6 +32,7 @@
 #include "RCRcvrERSkySerial.h"
 
 #define FW_VERSION  0x0120
+#define SIMUL       0
 
 static u8 mBaudAckLen;
 static u8 mBaudChkCtr;
@@ -137,13 +138,13 @@ void setup()
     mRcvr = new RCRcvrERSkySerial();
     mRcvr->init();
 
-#if 1
+#if SIMUL
     struct Config conf;
 
     conf.dwSignature = 0xCAFEBABE;
-    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DSMX, 1);
+//    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DSMX, 1);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DEVO, 0);
-//    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_SYMAX, 0);
+    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_SYMAX, 0);
     conf.dwConID     = 0x12345678;
     conf.ucPower     = TXPOWER_100mW;
 
@@ -182,19 +183,7 @@ void loop()
     }
 
     if (mRcvr) {
-#if 0
-        u32 proto = mRcvr->loop();
-
-        if (proto) {
-            LOG(F("PROTO TJ :%x\n"), proto);
-            initProtocol(proto);
-            if (mRFProto) {
-                mRFProto->setControllerID(0x12345678);
-                mRFProto->setRFPower(TXPOWER_150mW);
-                mRFProto->init();
-            }
-        }
-#else
+#if SIMUL
         if (Serial.available()) {
             u8 ch = Serial.read();
 
@@ -240,11 +229,23 @@ void loop()
                 lastTS = ts;
             }
         }
+#else
+        u32 proto = mRcvr->loop();
+
+        if (proto) {
+            LOG(F("PROTO TJ :%x\n"), proto);
+            initProtocol(proto);
+            if (mRFProto) {
+                mRFProto->setControllerID(0x12345678);
+                mRFProto->setRFPower(TXPOWER_150mW);
+                mRFProto->init();
+            }
+        }
 #endif
     }
 
     if (mRFProto) {
         mRFProto->injectControls(mRcvr->getRCs(), mRcvr->getChCnt());
-        mRFProto->loop(ts);
     }
+    DRAIN_LOG();
 }

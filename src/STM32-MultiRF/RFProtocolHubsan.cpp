@@ -371,6 +371,7 @@ int RFProtocolHubsan::init(void)
 {
     mTXID = 0xdb042679; // getControllerID();
 
+    RFProtocol::registerCallback(this);
     while(1) {
         mDev.reset();
         if (init1())

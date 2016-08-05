@@ -351,6 +351,7 @@ u16 RFProtocolYD717::callState(u32 now, u32 expected)
 
 int RFProtocolYD717::init(void)
 {
+    RFProtocol::registerCallback(this);
     mPacketCtr = 0;
 
     initRxTxAddr();

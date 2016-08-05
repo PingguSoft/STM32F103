@@ -290,6 +290,7 @@ u16 RFProtocolFlysky::callState(u32 now, u32 expected)
 
 int RFProtocolFlysky::init(void)
 {
+    RFProtocol::registerCallback(this);
     while (1) {
         mDev.reset();
         if (init1())

@@ -417,6 +417,7 @@ u16 RFProtocolV2x2::callState(u32 now, u32 expected)
 
 int RFProtocolV2x2::init(void)
 {
+    RFProtocol::registerCallback(this);
     mPacketCtr = 0;
     mAuxFlag   = 0;
     mLedBlinkCtr = BLINK_COUNT_MAX;

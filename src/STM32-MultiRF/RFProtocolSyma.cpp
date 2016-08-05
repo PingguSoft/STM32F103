@@ -21,7 +21,7 @@
 #define MAX_BIND_COUNT      345
 
 #define PACKET_PERIOD_uS    4000
-#define INITIAL_WAIT_uS     500
+#define INITIAL_WAIT_uS     5000
 #define FIRST_PACKET_uS     12000
 
 #define FLAG_FLIP           0x01
@@ -30,6 +30,8 @@
 #define FLAG_HEADLESS       0x08
 
 #define PROTO_OPT_X5C_X2    0x01
+
+#define __PRINT_FUNC__  LOG(F("%08ld : %s\n"), millis(), __PRETTY_FUNCTION__);
 
 enum {
     SYMAX_INIT1 = 0,
@@ -76,7 +78,6 @@ u8 RFProtocolSyma::getChannel(u8 id)
     } else if (ch > CHAN_MAX_VALUE) {
         ch = CHAN_MAX_VALUE;
     }
-
     u8 ret = (u8) ((ch < 0 ? 0x80 : 0) | (u8)map(ABS(ch), 0, CHAN_MAX_VALUE, 0, 127)); //BABS(ch / CHAN_MAX_VALUE * 127));
     return ret;
 }
@@ -171,8 +172,6 @@ void RFProtocolSyma::buildPacket(u8 bind)
         mPacketBuf[8] = 0x00;
     }
     mPacketBuf[9] = getCheckSum(mPacketBuf);
-//    DUMP("CH", mPacketBuf, 10);
-
 }
 
 void RFProtocolSyma::sendPacket(u8 bind)
@@ -268,6 +267,9 @@ void RFProtocolSyma::init1(void)
     mDev.initialize();
     mDev.setRFMode(RF_TX);
     mDev.readReg(NRF24L01_07_STATUS);
+
+    mDev.readRegMulti(NRF24L01_10_TX_ADDR, mRxTxAddrBuf, ADDR_BUF_SIZE);
+    DUMP("TX_ADDR", mRxTxAddrBuf, ADDR_BUF_SIZE);
 
     if (getProtocolOpt() == PROTO_OPT_X5C_X2) {
         bitrate = NRF24L01_BR_1M;
@@ -416,6 +418,7 @@ u16 RFProtocolSyma::callState(u32 now, u32 expected)
 int RFProtocolSyma::init(void)
 {
     __PRINT_FUNC__;
+    RFProtocol::registerCallback(this);
     mPacketCtr = 0;
 
     init1();
@@ -429,6 +432,7 @@ int RFProtocolSyma::init(void)
 int RFProtocolSyma::close(void)
 {
     mDev.initialize();
+    LOG("SYMA CLOSED\n");
     return (mDev.reset() ? 1L : -1L);
 }
 

@@ -41,31 +41,28 @@ RFProtocol::RFProtocol(u32 id)
     Timer2.refresh();
 }
 
-void RFProtocol::handleTimerIntr(void)
-{
-//    timer_disable_irq(Timer2.c_dev(), TIMER_CH1);
-
-    if (mChild) {
-        u16 next = mChild->callState(micros(), mNextTS);
-        mNextTS = micros() + next;
-        Timer2.setCompare(TIMER_CH1, next);
-        Timer2.refresh();
-    }
-//    timer_enable_irq(Timer2.c_dev(), TIMER_CH1);
-}
-
 RFProtocol::~RFProtocol()
 {
+    Timer2.pause();
+    Timer2.detachInterrupt(TIMER_CH1);
     close();
+}
+
+void RFProtocol::handleTimerIntr(void)
+{
+    timer_disable_irq(Timer2.c_dev(), TIMER_CH1);
+    if (mChild) {
+        u16 next = mChild->callState(Timer2.getCount(), mNextTS);
+        Timer2.setCompare(TIMER_CH1, next);
+        mNextTS = next;
+        Timer2.refresh();
+    }
+    timer_enable_irq(Timer2.c_dev(), TIMER_CH1);
 }
 
 void RFProtocol::registerCallback(RFProtocol *protocol)
 {
     mChild = protocol;
-}
-
-void RFProtocol::loop(u32 now)
-{
 }
 
 int RFProtocol::init(void)
@@ -159,11 +156,10 @@ u8 RFProtocol::isStickMoved(u8 init)
 
 void RFProtocol::startState(u16 period)
 {
-    mNextTS = micros() + period;
-
     Timer2.setCompare(TIMER_CH1, period);
     Timer2.refresh();
-    Timer2.attachCompare1Interrupt(RFProtocol::handleTimerIntr);
+    Timer2.attachInterrupt(TIMER_CH1, RFProtocol::handleTimerIntr);
+    mNextTS = period;
     Timer2.resume();
 }
 

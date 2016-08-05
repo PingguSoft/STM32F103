@@ -505,6 +505,8 @@ u16 RFProtocolDevo::callState(u32 now, u32 expected)
 
 int RFProtocolDevo::init(void)
 {
+    RFProtocol::registerCallback(this);
+
     init1();
 
     mDev.readMfgID(mMfgIDBuf);

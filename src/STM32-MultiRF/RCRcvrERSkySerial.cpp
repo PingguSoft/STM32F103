@@ -208,6 +208,8 @@ u32 RCRcvrERSkySerial::loop(void)
     return ret;
 }
 
+#define get32(p) ( (*(p + 3) << 24) | (*(p + 2) << 16) | (*(p + 1) << 8) | *p )
+
 u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
 {
     u32 ret = 0;
@@ -266,7 +268,7 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
         }
         p++;
 
-        u32 val = *(u32*)p;
+        u32 val = get32(p); // = *(u32*)p;
         val = ((val >> dec) & 0x7ff);
         sRC[i] =  map(val, 204, 1844, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
     }

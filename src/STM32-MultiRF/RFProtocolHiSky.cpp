@@ -265,6 +265,7 @@ int RFProtocolHiSky::init(void)
     mState     = HISKY_INIT;
     mPacketCtr = 0;
 
+    RFProtocol::registerCallback(this);
     initRxTxAddr();
     buildBindingPacket();
     init1();

@@ -21,7 +21,6 @@ static u32 rand_seed = 0xb2c54a2ful;
 static const u32 LFSR_FEEDBACK = 0x80200003ul;
 static const u32 LFSR_INTAP = 32-1;
 
-
 static void update_lfsr(uint32_t *lfsr, uint8_t b)
 {
     for (int i = 0; i < 8; ++i) {
@@ -44,14 +43,72 @@ u32 rand32()
 }
 
 #if __DEBUG__
+#define MAX_BUF_SIZE 4096
+
+struct ringBuf {
+    volatile u8 buffer[MAX_BUF_SIZE];
+    volatile u16 head;
+    volatile u16 tail;
+};
+
+struct ringBuf mTxRingBuf = { {0}, 0, 0 };
+
+static void putChar(struct ringBuf *buf, u8 data)
+{
+    u16 head;
+
+    head = buf->head;
+    buf->buffer[head] = data;
+    if (++head >= MAX_BUF_SIZE)
+        head = 0;
+    buf->head = head;
+}
+
+static void putStr(struct ringBuf *buf, char *str)
+{
+    u16 head;
+
+    head = buf->head;
+
+    while(*str) {
+        buf->buffer[head] = *str++;
+        if (++head >= MAX_BUF_SIZE)
+            head = 0;
+    }
+
+    buf->head = head;
+}
+
+void DRAIN_LOG(void)
+{
+    struct ringBuf *buf = &mTxRingBuf;
+
+    u16 tail = buf->tail;
+    u16 head = buf->head;
+    char ch;
+
+    if (tail == head)
+        return;
+
+    while (tail != head) {
+        ch = buf->buffer[tail];
+         Serial.print(ch);
+        if (++tail >= MAX_BUF_SIZE)
+            tail = 0;
+    }
+    buf->tail = tail;
+}
+
 void LOG(char *fmt, ... )
 {
     char buf[128]; // resulting string limited to 128 chars
+
     va_list args;
     va_start (args, fmt );
     vsnprintf(buf, 128, fmt, args);
     va_end (args);
-    Serial.print(buf);
+
+    putStr(&mTxRingBuf, buf);
 }
 
 void DUMP(char *name, u8 *data, u16 cnt)
