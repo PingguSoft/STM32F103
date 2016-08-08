@@ -268,7 +268,7 @@ u16 RFProtocolCFlie::callState(u32 now, u32 expected)
     return PACKET_PERIOD_uS;
 }
 
-int RFProtocolCFlie::init(void)
+int RFProtocolCFlie::init(u8 bind)
 {
     mPacketCtr = 0;
 

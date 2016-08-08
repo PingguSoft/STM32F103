@@ -260,7 +260,7 @@ u16 RFProtocolHiSky::callState(u32 now, u32 expected)
     return PACKET_PERIOD_uS;    // send 1 binding packet and 1 data packet per 9ms
 }
 
-int RFProtocolHiSky::init(void)
+int RFProtocolHiSky::init(u8 bind)
 {
     mState     = HISKY_INIT;
     mPacketCtr = 0;

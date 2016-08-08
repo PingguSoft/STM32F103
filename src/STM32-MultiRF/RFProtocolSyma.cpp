@@ -415,7 +415,7 @@ u16 RFProtocolSyma::callState(u32 now, u32 expected)
     return PACKET_PERIOD_uS;
 }
 
-int RFProtocolSyma::init(void)
+int RFProtocolSyma::init(u8 bind)
 {
     __PRINT_FUNC__;
     RFProtocol::registerCallback(this);

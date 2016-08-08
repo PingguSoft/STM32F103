@@ -750,7 +750,7 @@ u16 RFProtocolDSM::callState(u32 now, u32 expected)
     return dsm2_cb(now, expected);
 }
 
-int RFProtocolDSM::init(void)
+int RFProtocolDSM::init(u8 bind)
 {
     mChanIdx  = 0;
     mFixedID     = 0;
@@ -764,7 +764,7 @@ int RFProtocolDSM::init(void)
     mDev.reset();
     mDev.readMfgID(mMfgIDBuf);
 
-    initialize(1);
+    initialize(bind);
     startState(10000);
 
     return 0;

@@ -20,6 +20,10 @@
 
 #define MAX_PACKET_SIZE 25
 
+#define FUNC_BIND       BV(0)
+#define FUNC_RANGE      BV(1)
+#define FUNC_POWER_HI   BV(2)
+
 class RCRcvrERSkySerial : public RCRcvr
 {
 public:
@@ -40,9 +44,11 @@ private:
 
     u8   mProto;
     u8   mSubProto;
+    u8   mFunc;
 
     u8   mFinalProto;
     u8   mFinalSubProto;
+    u8   mFinalFunc;
     u8   mProtoChCnt;
 };
 

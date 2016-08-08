@@ -30,15 +30,19 @@
 #include "RFProtocolFlysky.h"
 #include "RCRcvrPPM.h"
 #include "RCRcvrERSkySerial.h"
+#include "Telemetry.h"
 
 #define FW_VERSION  0x0120
 #define SIMUL       0
 
+static u32 mSelProto = 0;
 static u8 mBaudAckLen;
 static u8 mBaudChkCtr;
 static u8 mBaudAckStr[12];
 static RFProtocol *mRFProto = NULL;
 static RCRcvr     *mRcvr = NULL;
+static u32 mLastTS = 0;
+static u8  mLed = 0;
 
 struct Config {
     u32 dwSignature;
@@ -159,6 +163,7 @@ void setup()
 #endif
 }
 
+#if SIMUL
 s16 thr  = CHAN_MIN_VALUE;
 s16 ele  = CHAN_MID_VALUE;
 s16 ail  = CHAN_MAX_VALUE / 2;
@@ -168,18 +173,29 @@ s16 step_ele = 2;
 s16 step_ail = 2;
 s16 step_rud = 2;
 u8  sim = 0;
+#endif
+
 u32 ts = 0;
-u32 lastTS = 0;
-u8  led = 0;
+s32 alt = 0;
+u16 volt = 420;
 
 void loop()
 {
     ts = micros();
 
-    if (ts - lastTS > 500000) {
-        led = !led;
-        digitalWrite(PC13, led);
-        lastTS = ts;
+    if (ts - mLastTS > 500000) {
+        mLed = !mLed;
+        digitalWrite(PC13, mLed);
+        mLastTS = ts;
+
+        if (mRFProto) {
+            LOG("ALT:%d, VOLT:%d\n", alt, volt);
+            if (mRFProto->getTM()) {
+                mRFProto->getTM()->setAlt(alt++);
+                mRFProto->getTM()->setVolt(0, volt--, 100);
+                mRFProto->getTM()->update();
+            }
+        }
     }
 
     if (mRcvr) {
@@ -201,8 +217,8 @@ void loop()
         }
 
         if (sim) {
-            static u32 lastTS;
-            if (ts - lastTS > 20000) {
+            static u32 mLastTS;
+            if (ts - mLastTS > 20000) {
                 if (thr <  CHAN_MIN_VALUE || thr > CHAN_MAX_VALUE)
                     step_thr = -step_thr;
 
@@ -226,19 +242,33 @@ void loop()
                 mRcvr->setRC(RFProtocol::CH_ELEVATOR, ele);
 //                LOG("T:%4d R:%4d E:%4d A:%4d %4d %4d %4d %4d\n", mRcvr->getRC(0), mRcvr->getRC(1), mRcvr->getRC(2), mRcvr->getRC(3), mRcvr->getRC(4),
 //                    mRcvr->getRC(5), mRcvr->getRC(6), mRcvr->getRC(7), mRcvr->getRC(8));
-                lastTS = ts;
+                mLastTS = ts;
             }
         }
 #else
         u32 proto = mRcvr->loop();
 
         if (proto) {
-            LOG(F("PROTO TJ :%x\n"), proto);
-            initProtocol(proto);
+            LOG(F("PROTO TJ :%x -> %x\n"), mSelProto, proto);
+
+            u8  func   = RFProtocol::getFunc(proto);
+            u32 pureID = RFProtocol::getIDExceptFunc(proto);
+
+            if (mSelProto != pureID) {
+                initProtocol(pureID);
+                mSelProto = pureID;
+                if (mRFProto) {
+                    mRFProto->setControllerID(0x12345678);
+                    mRFProto->init(func & FUNC_BIND);
+                }
+            }
+
             if (mRFProto) {
-                mRFProto->setControllerID(0x12345678);
-                mRFProto->setRFPower(TXPOWER_150mW);
-                mRFProto->init();
+                u8  power = TXPOWER_10mW;
+                if (func & FUNC_POWER_HI)
+                    power = TXPOWER_150mW;
+
+                mRFProto->setRFPower(power);
             }
         }
 #endif

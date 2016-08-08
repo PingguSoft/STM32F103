@@ -196,19 +196,19 @@ void RFProtocolDevo::parseTelemetryPacket(u8 *packet)
     }
 
     switch (packet[0]) {
-        case TELEMETRY_ENABLE:
-            getTM().setVolt(0, packet[1]);      //In 1/10 of Volts
-            getTM().setVolt(1, packet[3]);
-            getTM().setVolt(2, packet[5]);
-            getTM().setRPM(0, packet[7] * 120); //In RPM
-            getTM().setRPM(1, packet[9] * 120);
+        case 0x30:
+            getTM()->setVolt(0, packet[1], 10);      //In 1/10 of Volts
+            getTM()->setVolt(1, packet[3], 10);
+            getTM()->setVolt(2, packet[5], 10);
+            getTM()->setRPM(0, packet[7] * 120); //In RPM
+            getTM()->setRPM(1, packet[9] * 120);
             break;
 
         case 0x31:
-            getTM().setTemp(0, packet[1] == 0xff ? 0 : packet[1] - 20); //In degrees-C
-            getTM().setTemp(0, packet[2] == 0xff ? 0 : packet[2] - 20);
-            getTM().setTemp(0, packet[3] == 0xff ? 0 : packet[3] - 20);
-            getTM().setTemp(0, packet[4] == 0xff ? 0 : packet[4] - 20);
+            getTM()->setTemp(0, packet[1] == 0xff ? 0 : packet[1] - 20); //In degrees-C
+            getTM()->setTemp(0, packet[2] == 0xff ? 0 : packet[2] - 20);
+            getTM()->setTemp(0, packet[3] == 0xff ? 0 : packet[3] - 20);
+            getTM()->setTemp(0, packet[4] == 0xff ? 0 : packet[4] - 20);
             break;
     }
 
@@ -500,10 +500,10 @@ u16 RFProtocolDevo::callStateNormal(void)
 
 u16 RFProtocolDevo::callState(u32 now, u32 expected)
 {
-    return callStateNormal();
+    return callStateTelemetry();
 }
 
-int RFProtocolDevo::init(void)
+int RFProtocolDevo::init(u8 bind)
 {
     RFProtocol::registerCallback(this);
 
@@ -525,7 +525,7 @@ int RFProtocolDevo::init(void)
     mPacketCtr  = 0;
     mTxState    = 0;
 
-    if (1) {  // ! Model.mFixedID
+    if (bind) {  // ! Model.mFixedID
         mFixedID = ((u32)(mRFChanBufs[0] ^ mMfgIDBuf[0] ^ mMfgIDBuf[3]) << 16)
                  | ((u32)(mRFChanBufs[1] ^ mMfgIDBuf[1] ^ mMfgIDBuf[4]) << 8)
                  | ((u32)(mRFChanBufs[2] ^ mMfgIDBuf[2] ^ mMfgIDBuf[5]) << 0);

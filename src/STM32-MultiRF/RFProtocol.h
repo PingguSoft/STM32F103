@@ -90,11 +90,14 @@ public:
     };
 
     // utility functions
-    static u32   buildID(u8 module, u8 proto, u8 option)  { return ((u32)module << 16 | (u32)proto << 8 | option); }
+    static u32   buildID(u8 module, u8 proto, u8 option)  { return (((u32)module << 16) | ((u32)proto << 8) | option); }
+    static u32   buildID(u8 module, u8 proto, u8 option, u8 func)  { return (((u32)func << 24) | ((u32)module << 16) | ((u32)proto << 8) | option); }
     static u8    getRcvr(u32 id)        { return (id >> 20) & 0x0f; }
     static u8    getModule(u32 id)      { return (id >> 16) & 0x0f; }
     static u8    getProtocol(u32 id)    { return (id >> 8) & 0xff;  }
     static u8    getProtocolOpt(u32 id) { return id & 0xff;         }
+    static u8    getFunc(u32 id)        { return (id >> 24) & 0xff; }
+    static u32   getIDExceptFunc(u32 id){ return id & 0x00ffffff;   }
 
     static void  handleTimerIntr(void);
     static void  registerCallback(RFProtocol *protocol);
@@ -107,6 +110,7 @@ public:
     u8   getModule(void)            { return (mProtoID >> 16) & 0x0f; }
     u8   getProtocol(void)          { return (mProtoID >> 8) & 0xff;  }
     u8   getProtocolOpt(void)       { return mProtoID & 0xff; }
+    u8   getFunc(void)              { return (mProtoID >> 24) & 0xff; }
     void setControllerID(u32 id)    { mConID = id;     }
     u32  getControllerID()          { return mConID;   }
 
@@ -122,10 +126,10 @@ public:
     void clearRFPowerUpdated(void);
 
     void startState(u16 period);
-    Telemetry getTM(void)           { return mTM;   }
+    Telemetry *getTM(void)           { return mTM;   }
 
     // for protocol
-    virtual int  init(void);
+    virtual int  init(u8 bind);
     virtual int  close(void);
     virtual int  reset(void);
     virtual int  setRFPower(u8 power);
@@ -140,7 +144,7 @@ private:
     s16  mBufControls[MAX_CHANNEL];
     u8   mTXPower;
 
-    Telemetry   mTM;
+    Telemetry   *mTM;
 
     static u32 mNextTS;
     static RFProtocol* mChild;

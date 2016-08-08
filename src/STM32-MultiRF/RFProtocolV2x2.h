@@ -31,7 +31,7 @@ public:
     ~RFProtocolV2x2() { close(); }
 
 // for protocol
-    virtual int  init(void);
+    virtual int  init(u8 bind);
     virtual int  close(void);
     virtual int  reset(void);
     virtual int  getInfo(s8 id, u8 *data);

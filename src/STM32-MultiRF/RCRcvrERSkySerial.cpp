@@ -213,23 +213,24 @@ u32 RCRcvrERSkySerial::loop(void)
 u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
 {
     u32 ret = 0;
+    u8  func = 0;
 
     if (data[0] & 0x20) {       // check range
-
+        func |= FUNC_RANGE;
     } else {
-
+        func &= ~FUNC_RANGE;
     }
 
     if (data[0] & 0xc0) {       // check autobind(0x40) & bind(0x80) together
-
+        func |= FUNC_BIND;
     } else {
-
+        func &= ~FUNC_BIND;
     }
 
     if (data[1] & 0x80) {       // low power
-
+        func &= ~FUNC_POWER_HI;
     } else {
-
+        func |= FUNC_POWER_HI;
     }
 
     u8 proto  = data[0] & 0x1f;          // 5 bit
@@ -240,22 +241,22 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
     u8 *p  = &data[2];
     u8 dec = -3;
 
-
-    if (proto != mProto || sub != mSubProto) {
-//        LOG(F("PROTO CHANGE = %x %x\n"), proto, sub);
+    if (proto != mProto || sub != mSubProto || func != mFunc) {
         mProto    = proto;
         mSubProto = sub;
+        mFunc     = func;
         mProtoChCnt = 0;
     } else if (mProtoChCnt < 3) {
         mProtoChCnt++;
-        if (mProtoChCnt == 3 && (proto != mFinalProto || sub != mFinalSubProto)) {
+        if (mProtoChCnt == 3 && (proto != mFinalProto || sub != mFinalSubProto || func != mFunc)) {
             mFinalProto    = proto;
             mFinalSubProto = sub;
+            mFinalFunc     = func;
             const struct tbl *t = &TBL_CNV[proto];
             if (t->proto != 255) {
-                ret = RFProtocol::buildID(t->chip, t->proto, sub);
+                ret = RFProtocol::buildID(t->chip, t->proto, sub, func);
             }
-            LOG(F("FINAL PROTO ERSKY = %x %x [%x, %x]\n"), proto, sub, t->proto, ret);
+            LOG(F("FINAL PROTO ERSKY = %x %x %x [%x, %x]\n"), proto, sub, func, t->proto, ret);
         }
     }
 

@@ -367,7 +367,7 @@ u16 RFProtocolHubsan::callState(u32 now, u32 expected)
 
 static const PROGMEM u8 ALLOWED_CH[] = {0x14, 0x1e, 0x28, 0x32, 0x3c, 0x46, 0x50, 0x5a, 0x64, 0x6e, 0x78, 0x82};
 
-int RFProtocolHubsan::init(void)
+int RFProtocolHubsan::init(u8 bind)
 {
     mTXID = 0xdb042679; // getControllerID();
 

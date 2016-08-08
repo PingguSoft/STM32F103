@@ -349,7 +349,7 @@ u16 RFProtocolYD717::callState(u32 now, u32 expected)
     return PACKET_PERIOD_uS;
 }
 
-int RFProtocolYD717::init(void)
+int RFProtocolYD717::init(u8 bind)
 {
     RFProtocol::registerCallback(this);
     mPacketCtr = 0;

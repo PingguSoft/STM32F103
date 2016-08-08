@@ -288,7 +288,7 @@ u16 RFProtocolFlysky::callState(u32 now, u32 expected)
     return 1460;
 }
 
-int RFProtocolFlysky::init(void)
+int RFProtocolFlysky::init(u8 bind)
 {
     RFProtocol::registerCallback(this);
     while (1) {
