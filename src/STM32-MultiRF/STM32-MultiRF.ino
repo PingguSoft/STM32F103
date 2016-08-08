@@ -187,15 +187,6 @@ void loop()
         mLed = !mLed;
         digitalWrite(PC13, mLed);
         mLastTS = ts;
-
-        if (mRFProto) {
-            LOG("ALT:%d, VOLT:%d\n", alt, volt);
-            if (mRFProto->getTM()) {
-                mRFProto->getTM()->setAlt(alt++);
-                mRFProto->getTM()->setVolt(0, volt--, 100);
-                mRFProto->getTM()->update();
-            }
-        }
     }
 
     if (mRcvr) {
@@ -249,8 +240,6 @@ void loop()
         u32 proto = mRcvr->loop();
 
         if (proto) {
-            LOG(F("PROTO TJ :%x -> %x\n"), mSelProto, proto);
-
             u8  func   = RFProtocol::getFunc(proto);
             u32 pureID = RFProtocol::getIDExceptFunc(proto);
 
@@ -259,7 +248,11 @@ void loop()
                 mSelProto = pureID;
                 if (mRFProto) {
                     mRFProto->setControllerID(0x12345678);
-                    mRFProto->init(func & FUNC_BIND);
+                    mRFProto->init(func & FUNC_AUTO_BIND);
+                }
+            } else {
+                if (mRFProto && (func & FUNC_BIND)) {
+                    mRFProto->init(1);
                 }
             }
 
@@ -267,7 +260,6 @@ void loop()
                 u8  power = TXPOWER_10mW;
                 if (func & FUNC_POWER_HI)
                     power = TXPOWER_150mW;
-
                 mRFProto->setRFPower(power);
             }
         }
@@ -276,6 +268,9 @@ void loop()
 
     if (mRFProto) {
         mRFProto->injectControls(mRcvr->getRCs(), mRcvr->getChCnt());
+        if (mRFProto->getTM()) {
+            mRFProto->getTM()->update();
+        }
     }
     DRAIN_LOG();
 }

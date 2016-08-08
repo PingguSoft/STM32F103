@@ -20,9 +20,10 @@
 
 #define MAX_PACKET_SIZE 25
 
-#define FUNC_BIND       BV(0)
-#define FUNC_RANGE      BV(1)
-#define FUNC_POWER_HI   BV(2)
+#define FUNC_AUTO_BIND  BV(0)
+#define FUNC_BIND       BV(1)
+#define FUNC_RANGE      BV(2)
+#define FUNC_POWER_HI   BV(3)
 
 class RCRcvrERSkySerial : public RCRcvr
 {

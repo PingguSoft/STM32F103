@@ -184,6 +184,9 @@ s32 RFProtocolDevo::convFloatStr2Int(u8 *ptr)
 
 void RFProtocolDevo::parseTelemetryPacket(u8 *packet)
 {
+    if (!getTM())
+        return;
+
     if((packet[0] & 0xF0) != TELEMETRY_ENABLE)
         return;
 
@@ -197,10 +200,10 @@ void RFProtocolDevo::parseTelemetryPacket(u8 *packet)
 
     switch (packet[0]) {
         case 0x30:
-            getTM()->setVolt(0, packet[1], 10);      //In 1/10 of Volts
+            getTM()->setVolt(0, packet[1], 10);     //In 1/10 of Volts
             getTM()->setVolt(1, packet[3], 10);
             getTM()->setVolt(2, packet[5], 10);
-            getTM()->setRPM(0, packet[7] * 120); //In RPM
+            getTM()->setRPM(0, packet[7] * 120);    //In RPM
             getTM()->setRPM(1, packet[9] * 120);
             break;
 
@@ -404,7 +407,7 @@ u16 RFProtocolDevo::callStateTelemetry(void)
             buildPacket();
             mDev.writePayload(mPacketBuf, MAX_PACKET_SIZE);
             mTxState = 1;
-            return 1200;
+            return 900;
 
         case 1:
             i = 0;
@@ -442,7 +445,7 @@ u16 RFProtocolDevo::callStateTelemetry(void)
                 mCurRFChPtr = (mCurRFChPtr == &mRFChanBufs[2]) ? mRFChanBufs : (mCurRFChPtr + 1);
                 mDev.setRFChannel(*mCurRFChPtr);
             }
-            delay = 1200;
+            delay = 1500;
             break;
 
         case 2:

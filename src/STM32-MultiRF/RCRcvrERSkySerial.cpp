@@ -221,7 +221,13 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
         func &= ~FUNC_RANGE;
     }
 
-    if (data[0] & 0xc0) {       // check autobind(0x40) & bind(0x80) together
+    if (data[0] & 0x40) {       // check autobind(0x40)
+        func |= FUNC_AUTO_BIND;
+    } else {
+        func &= ~FUNC_AUTO_BIND;
+    }
+
+    if (data[0] & 0x80) {       // check bind(0x80)
         func |= FUNC_BIND;
     } else {
         func &= ~FUNC_BIND;
@@ -248,7 +254,7 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
         mProtoChCnt = 0;
     } else if (mProtoChCnt < 3) {
         mProtoChCnt++;
-        if (mProtoChCnt == 3 && (proto != mFinalProto || sub != mFinalSubProto || func != mFunc)) {
+        if (mProtoChCnt == 3 && (proto != mFinalProto || sub != mFinalSubProto || func != mFinalFunc)) {
             mFinalProto    = proto;
             mFinalSubProto = sub;
             mFinalFunc     = func;
@@ -256,7 +262,7 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
             if (t->proto != 255) {
                 ret = RFProtocol::buildID(t->chip, t->proto, sub, func);
             }
-            LOG(F("FINAL PROTO ERSKY = %x %x %x [%x, %x]\n"), proto, sub, func, t->proto, ret);
+            LOG(F("FINAL PROTO ERSKY = %x %x %x [%x]\n"), proto, sub, func, ret);
         }
     }
 

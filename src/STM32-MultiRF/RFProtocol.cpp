@@ -45,11 +45,14 @@ RFProtocol::RFProtocol(u32 id)
 
 RFProtocol::~RFProtocol()
 {
+    timer_disable_irq(Timer2.c_dev(), TIMER_CH1);
     Timer2.pause();
     Timer2.detachInterrupt(TIMER_CH1);
     close();
 
     delete mTM;
+    mTM = NULL;
+    LOG("PROTOCOL CLOSED\n");
 }
 
 void RFProtocol::handleTimerIntr(void)
