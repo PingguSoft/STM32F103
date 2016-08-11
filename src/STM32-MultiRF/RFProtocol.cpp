@@ -33,8 +33,6 @@ RFProtocol::RFProtocol(u32 id)
     mProtoID = id;
     initVars();
 
-    mTM = new Telemetry();
-
     Timer2.setChannel1Mode(TIMER_OUTPUTCOMPARE);
     Timer2.pause();
     Timer2.setCount(0);
@@ -49,9 +47,6 @@ RFProtocol::~RFProtocol()
     Timer2.pause();
     Timer2.detachInterrupt(TIMER_CH1);
     close();
-
-    delete mTM;
-    mTM = NULL;
     LOG("PROTOCOL CLOSED\n");
 }
 

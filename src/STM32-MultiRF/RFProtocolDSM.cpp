@@ -21,8 +21,6 @@
 #define BIND_CHANNEL    0x0d        //This can be any odd channel
 #define NUM_WAIT_LOOPS  (100 / 5)   //each loop is ~5us.  Do not wait more than 100us
 
-#define __PRINT_FUNC__  LOG(F("%08ld : %s\n"), micros(), __PRETTY_FUNCTION__);
-
 enum {
     PROTOOPTS_DSMX = 1,
     PROTOOPTS_TELEMETRY = 2,

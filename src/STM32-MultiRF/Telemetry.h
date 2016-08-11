@@ -44,6 +44,7 @@ public:
 
     inline struct gps *getGPS(void)                 { return &mGPS;     }
     inline void  setLat(s32 lat)                    { mGPS.latitude = lat;              mUpdateMask |= MASK_GPS; }
+    inline s32   getLat(void)                       { return mGPS.latitude;                                      }
     inline void  setLon(s32 lon)                    { mGPS.longitude = lon;             mUpdateMask |= MASK_GPS; }
     inline void  setAlt(s32 alt)                    { mGPS.altitude = alt;              mUpdateMask |= MASK_GPS; }
     inline void  setVel(s32 vel)                    { mGPS.velocity = vel;              mUpdateMask |= MASK_GPS; }
@@ -51,6 +52,9 @@ public:
     inline void  setHead(u16 head, u16 div)         { mGPS.heading = head * 10 / div;   mUpdateMask |= MASK_GPS; }
     inline void  setSatCnt(u8 sat)                  { mGPS.satcount = sat;              mUpdateMask |= MASK_GPS; }
 
+    void update(void);
+
+private:
     u8   buildRSSI(u8 *buf);
     u8   buildAltInfo(u8 *buf);
     u8   buildPowerInfo(u8 *buf);
@@ -58,7 +62,6 @@ public:
     u8   buildTMInfo(u8 *buf);
 
     void frameDSM(u8 rssi, u8 *buf, u8 size);
-    void update(void);
     void clearMask(u32 mask)                        { mUpdateMask &= ~mask; }
     u8   isMasked(u32 mask)                         { return (mUpdateMask & mask) == mask; }
 

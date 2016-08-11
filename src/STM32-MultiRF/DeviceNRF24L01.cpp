@@ -224,27 +224,27 @@ u8 DeviceNRF24L01::setRFPower(u8 power)
 
 void DeviceNRF24L01::setRFModeImpl(enum RF_MODE mode)
 {
-    if(mode == RF_TX) {
-        writeReg(NRF24L01_07_STATUS, (1 << NRF24L01_07_RX_DR)    //reset the flag(s)
-                                            | (1 << NRF24L01_07_TX_DS)
-                                            | (1 << NRF24L01_07_MAX_RT));
-        writeReg(NRF24L01_00_CONFIG, (1 << NRF24L01_00_EN_CRC)   // switch to TX mode
-                                            | (1 << NRF24L01_00_CRCO)
-                                            | (1 << NRF24L01_00_PWR_UP));
+    if (mode == RF_TX) {
+        writeReg(NRF24L01_07_STATUS,  BV(NRF24L01_07_RX_DR)     // reset the flag(s)
+                                    | BV(NRF24L01_07_TX_DS)
+                                    | BV(NRF24L01_07_MAX_RT));
+        writeReg(NRF24L01_00_CONFIG,  BV(NRF24L01_00_EN_CRC)    // switch to TX mode
+                                    | BV(NRF24L01_00_CRCO)
+                                    | BV(NRF24L01_00_PWR_UP));
         delayMicroseconds(150);
     } else if (mode == RF_RX) {
-        writeReg(NRF24L01_07_STATUS, 0x70);        // reset the flag(s)
-        writeReg(NRF24L01_00_CONFIG, 0x0F);        // switch to RX mode
-        writeReg(NRF24L01_07_STATUS, (1 << NRF24L01_07_RX_DR)    //reset the flag(s)
-                                            | (1 << NRF24L01_07_TX_DS)
-                                            | (1 << NRF24L01_07_MAX_RT));
-        writeReg(NRF24L01_00_CONFIG, (1 << NRF24L01_00_EN_CRC)   // switch to RX mode
-                                            | (1 << NRF24L01_00_CRCO)
-                                            | (1 << NRF24L01_00_PWR_UP)
-                                            | (1 << NRF24L01_00_PRIM_RX));
+        writeReg(NRF24L01_07_STATUS, 0x70);                     // reset the flag(s)
+        writeReg(NRF24L01_00_CONFIG, 0x0F);                     // switch to RX mode
+        writeReg(NRF24L01_07_STATUS,  BV(NRF24L01_07_RX_DR)     // reset the flag(s)
+                                    | BV(NRF24L01_07_TX_DS)
+                                    | BV(NRF24L01_07_MAX_RT));
+        writeReg(NRF24L01_00_CONFIG,  BV(NRF24L01_00_EN_CRC)    // switch to RX mode
+                                    | BV(NRF24L01_00_CRCO)
+                                    | BV(NRF24L01_00_PWR_UP)
+                                    | BV(NRF24L01_00_PRIM_RX));
         delayMicroseconds(150);
     } else {
-        writeReg(NRF24L01_00_CONFIG, (1 << NRF24L01_00_EN_CRC)); //PowerDown
+        writeReg(NRF24L01_00_CONFIG, BV(NRF24L01_00_EN_CRC));   //PowerDown
     }
 }
 
@@ -257,4 +257,3 @@ int DeviceNRF24L01::reset()
     setRFMode(RF_IDLE);
     return (status1 == status2 && (status1 & 0x0f) == 0x0e);
 }
-

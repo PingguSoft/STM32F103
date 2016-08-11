@@ -126,7 +126,7 @@ public:
     void clearRFPowerUpdated(void);
 
     void startState(u16 period);
-    Telemetry *getTM(void)           { return mTM;   }
+    Telemetry getTM(void)           { return mTM;   }
 
     // for protocol
     virtual int  init(u8 bind);
@@ -144,7 +144,7 @@ private:
     s16  mBufControls[MAX_CHANNEL];
     u8   mTXPower;
 
-    Telemetry   *mTM;
+    Telemetry   mTM;
 
     static u32 mNextTS;
     static RFProtocol* mChild;

@@ -18,10 +18,12 @@
 #include "utils.h"
 
 
+#define PAYLOADSIZE          8  // receive data pipes set to this size, but unused
+
 #define MAX_BIND_COUNT      60
 #define PACKET_PERIOD_uS  8000
 #define INITIAL_WAIT_uS  50000
-#define PACKET_CHKTIME_uS 5000  // Time to wait if packet not yet acknowledged or timed out
+#define PACKET_CHKTIME_uS  500  // Time to wait if packet not yet acknowledged or timed out
 
 // Stock tx fixed frequency is 0x3C. Receiver only binds on this freq.
 #define RF_CHANNEL          0x3C
@@ -43,43 +45,42 @@ enum {
     YD717_INIT1 = 0,
     YD717_BIND2,
     YD717_BIND3,
+    YD717_BIND4,
     YD717_DATA  = 0x10
 };
 
 enum {
     PROTO_OPT_YD717       = 0,
     PROTO_OPT_SKY_WALKER  = 1,
-    PROTO_OPT_XINXUN      = 2,
-    PROTO_OPT_NI_HUI      = 3,
-    PROTO_OPT_SYMA_X4     = 4,
+    PROTO_OPT_SYMA_X4     = 2,
+    PROTO_OPT_XINXUN      = 3,
+    PROTO_OPT_NI_HUI      = 4,
 };
 
 u8 RFProtocolYD717::checkStatus()
 {
     u8 stat = mDev.readReg(NRF24L01_07_STATUS);
 
-    switch (stat & (BV(NRF24L01_07_TX_DS) | BV(NRF24L01_07_MAX_RT)))
-    {
-    case BV(NRF24L01_07_TX_DS):
+    if (stat & BV(NRF24L01_07_TX_DS)) {
         return PKT_ACKED;
-    case BV(NRF24L01_07_MAX_RT):
+    } else if (stat & BV(NRF24L01_07_MAX_RT)) {
         return PKT_TIMEOUT;
+    } else {
+        return PKT_PENDING;
     }
-
-    return PKT_PENDING;
 }
 
 u8 RFProtocolYD717::getControl(u8 id)
 {
     s32 ch = RFProtocol::getControl(id);
+
     if (ch < CHAN_MIN_VALUE) {
         ch = CHAN_MIN_VALUE;
     } else if (ch > CHAN_MAX_VALUE) {
         ch = CHAN_MAX_VALUE;
     }
 
-    u8 ret = (u8) (((ch * 0xFF / CHAN_MAX_VALUE) + 0x100) >> 1);
-    return ret;
+    return (u8) (((ch * 0xFF / CHAN_MAX_VALUE) + 0x100) >> 1);
 }
 
 void RFProtocolYD717::getControls(u8* throttle, u8* rudder, u8* elevator, u8* aileron,
@@ -87,25 +88,29 @@ void RFProtocolYD717::getControls(u8* throttle, u8* rudder, u8* elevator, u8* ai
 {
     // Protocol is registered AETRF, that is
     // Aileron is channel 1, Elevator - 2, Throttle - 3, Rudder - 4, Flip control - 5
+    u8  opt = getProtocolOpt();
 
     // Channel 3
     *throttle = getControl(CH_THROTTLE);
 
     // Channel 4
-    if(getProtocolOpt() == PROTO_OPT_XINXUN) {
-      *rudder = getControl(CH_RUDDER);
-      *rudder_trim = (0xff - *rudder) >> 1;
+    *rudder = getControl(CH_RUDDER);
+    if(opt == PROTO_OPT_XINXUN || opt == PROTO_OPT_SKY_WALKER) {
+      //*rudder_trim = (0xff - *rudder) >> 1;
     } else {
-      *rudder = 0xff - getControl(CH_RUDDER);
-      *rudder_trim = *rudder >> 1;
+      *rudder = 0xff - *rudder;
     }
+    *rudder_trim = *rudder >> 1;
 
     // Channel 2
     *elevator = getControl(CH_ELEVATOR);
     *elevator_trim = *elevator >> 1;
 
     // Channel 1
-    *aileron = 0xff - getControl(CH_AILERON);
+    *aileron = getControl(CH_AILERON);
+    if(getProtocolOpt() != PROTO_OPT_SKY_WALKER) {
+        *aileron = 0xff - *aileron;
+    }
     *aileron_trim = *aileron >> 1;
 
     // Channel 5
@@ -158,14 +163,14 @@ void RFProtocolYD717::sendPacket(u8 bind)
     }
 
     // clear mPacketBuf status bits and TX FIFO
-    mDev.writeReg(NRF24L01_07_STATUS, (BV(NRF24L01_07_TX_DS) | BV(NRF24L01_07_MAX_RT)));
+    mDev.writeReg(NRF24L01_07_STATUS, BV(NRF24L01_07_TX_DS) | BV(NRF24L01_07_MAX_RT));
     mDev.flushTx();
 
     if(getProtocolOpt() == PROTO_OPT_YD717) {
         mDev.writePayload(mPacketBuf, 8);
     } else {
         mPacketBuf[8] = mPacketBuf[0];  // checksum
-        for(u8 i=1; i < 8; i++)
+        for (u8 i = 1; i < 8; i++)
             mPacketBuf[8] += mPacketBuf[i];
         mPacketBuf[8] = ~mPacketBuf[8];
         mDev.writePayload(mPacketBuf, 9);
@@ -192,17 +197,17 @@ void RFProtocolYD717::sendPacket(u8 bind)
 
 void RFProtocolYD717::initRxTxAddr(void)
 {
-    u32 lfsr = getControllerID();
+    u32 lfsr = 0xb2c54a2ful; //getControllerID();
 
     // Pump zero bytes for LFSR to diverge more
     for (u8 i = 0; i < sizeof(lfsr); ++i)
       rand32_r(&lfsr, 0);
 
+    mRxTxAddrBuf[0] = (lfsr >> 24) & 0xff;
+    mRxTxAddrBuf[1] = (lfsr >> 16) & 0xff;
+    mRxTxAddrBuf[2] = (lfsr >>  8) & 0xff;
+    mRxTxAddrBuf[3] = (lfsr >>  0) & 0xff;
     mRxTxAddrBuf[4] = 0xC1;
-    for (u8 i = 0; i < sizeof(mRxTxAddrBuf)-1; ++i) {
-        mRxTxAddrBuf[i] = lfsr & 0xff;
-        rand32_r(&lfsr, i);
-    }
 }
 
 static const PROGMEM u8 TBL_INIT_REGS[] = {
@@ -223,7 +228,7 @@ static const PROGMEM u8 TBL_INIT_REGS[] = {
     0xC5,                                           // 0E :
     0xC6,                                           // 0F :
     0xff,                                           // 10 : skip
-    PAYLOADSIZE,                                    // 11 : bytes of data payload for pipe 1
+    PAYLOADSIZE,                                    // 11 : bytes of data payload for pipe 0
     PAYLOADSIZE,                                    // 12 :
     PAYLOADSIZE,                                    // 13 :
     PAYLOADSIZE,                                    // 14 :
@@ -236,6 +241,7 @@ void RFProtocolYD717::init1(void)
 {
     u8 val;
 
+    __PRINT_FUNC__;
     mDev.initialize();
     mDev.setRFMode(RF_TX);
     for (u8 i = 0; i < sizeof(TBL_INIT_REGS) ; i++) {
@@ -259,43 +265,72 @@ void RFProtocolYD717::init1(void)
 
     mDev.writeRegMulti(NRF24L01_0A_RX_ADDR_P0, mRxTxAddrBuf, 5);
     mDev.writeRegMulti(NRF24L01_10_TX_ADDR, mRxTxAddrBuf, 5);
+
+    // Check for Beken BK2421/BK2423 chip
+    // It is done by using Beken specific activate code, 0x53
+    // and checking that status register changed appropriately
+    // There is no harm to run it on nRF24L01 because following
+    // closing activate command changes state back even if it
+    // does something on nRF24L01
+    mDev.activate(0x53); // magic for BK2421 bank switch
+    LOG("Trying to switch banks\n");
+    if (mDev.readReg(NRF24L01_07_STATUS) & 0x80) {
+        LOG("BK2421 detected\n");
+        // Beken registers don't have such nice names, so we just mention
+        // them by their numbers
+        // It's all magic, eavesdropped from real transfer and not even from the
+        // data sheet - it has slightly different values
+        mDev.writeRegMulti(0x00, (u8 *) "\x40\x4B\x01\xE2", 4);
+        mDev.writeRegMulti(0x01, (u8 *) "\xC0\x4B\x00\x00", 4);
+        mDev.writeRegMulti(0x02, (u8 *) "\xD0\xFC\x8C\x02", 4);
+        mDev.writeRegMulti(0x03, (u8 *) "\x99\x00\x39\x21", 4);
+        mDev.writeRegMulti(0x04, (u8 *) "\xD9\x96\x82\x1B", 4);
+        mDev.writeRegMulti(0x05, (u8 *) "\x24\x06\x7F\xA6", 4);
+        mDev.writeRegMulti(0x0C, (u8 *) "\x00\x12\x73\x00", 4);
+        mDev.writeRegMulti(0x0D, (u8 *) "\x46\xB4\x80\x00", 4);
+        mDev.writeRegMulti(0x04, (u8 *) "\xDF\x96\x82\x1B", 4);
+        mDev.writeRegMulti(0x04, (u8 *) "\xD9\x96\x82\x1B", 4);
+
+        u8 id[4];
+        mDev.readRegMulti(0x08, id, 4);
+        DUMP("ID", id, 4);
+    } else {
+        LOG("nRF24L01 detected\n");
+    }
+    mDev.activate(0x53); // switch bank back
 }
 
 void RFProtocolYD717::init2(void)
 {
+     __PRINT_FUNC__;
     // for bind packets set address to prearranged value known to receiver
     u8 bind_rx_tx_addr[5];
 
     if (getProtocolOpt() == PROTO_OPT_SYMA_X4) {
-        for (u8 i=0; i < 5; i++)
-            bind_rx_tx_addr[i]  = 0x60;
+        memset(bind_rx_tx_addr, 0x60, 5);
     } else if (getProtocolOpt() == PROTO_OPT_NI_HUI) {
-        for( u8 i=0; i < 5; i++)
-            bind_rx_tx_addr[i]  = 0x64;
+        memset(bind_rx_tx_addr, 0x64, 5);
     } else {
-        for (u8 i=0; i < 5; i++)
-            bind_rx_tx_addr[i]  = 0x65;
+        memset(bind_rx_tx_addr, 0x65, 5);
     }
-
     mDev.writeRegMulti(NRF24L01_0A_RX_ADDR_P0, bind_rx_tx_addr, 5);
     mDev.writeRegMulti(NRF24L01_10_TX_ADDR, bind_rx_tx_addr, 5);
 }
 
 void RFProtocolYD717::init3(void)
 {
+    __PRINT_FUNC__;
     // set rx/tx address for data phase
     mDev.writeRegMulti(NRF24L01_0A_RX_ADDR_P0, mRxTxAddrBuf, 5);
     mDev.writeRegMulti(NRF24L01_10_TX_ADDR, mRxTxAddrBuf, 5);
 }
 
-#ifdef YD717_TELEMETRY
 void RFProtocolYD717::updateTelemetry(void) {
   static u8 frameloss = 0;
 
-  frameloss += mDev.ReadReg(NRF24L01_08_OBSERVE_TX) >> 4;
+  frameloss += mDev.readReg(NRF24L01_08_OBSERVE_TX) >> 4;
   mDev.writeReg(NRF24L01_05_RF_CH, RF_CHANNEL);   // reset packet loss counter
 }
-#endif
 
 u16 RFProtocolYD717::callState(u32 now, u32 expected)
 {
@@ -309,12 +344,15 @@ u16 RFProtocolYD717::callState(u32 now, u32 expected)
         if (mBindCtr == 0) {
             if (checkStatus() == PKT_PENDING)
                 return PACKET_CHKTIME_uS;       // packet send not yet complete
+
             init3();                            // change to data phase rx/tx address
             sendPacket(0);
-            mState = YD717_BIND3;
+            //mState = YD717_BIND3;
+            mState = YD717_BIND4;
         } else {
             if (checkStatus() == PKT_PENDING)
                 return PACKET_CHKTIME_uS;       // packet send not yet complete
+
             sendPacket(1);
             mBindCtr--;
         }
@@ -322,35 +360,55 @@ u16 RFProtocolYD717::callState(u32 now, u32 expected)
 
     case YD717_BIND3:
         switch (checkStatus()) {
-        case PKT_PENDING:
-            return PACKET_CHKTIME_uS;           // packet send not yet complete
-        case PKT_ACKED:
-            mState = YD717_DATA;
-            break;
-        case PKT_TIMEOUT:
-            init2();                            // change to bind rx/tx address
-            mBindCtr = MAX_BIND_COUNT;
-            mState = YD717_BIND2;
-            sendPacket(1);
+            case PKT_PENDING:
+                return PACKET_CHKTIME_uS;           // packet send not yet complete
+
+            case PKT_ACKED:
+                mState = YD717_DATA;
+                LOG("BINDED\n");
+                break;
+
+            case PKT_TIMEOUT:
+                init2();                            // change to bind rx/tx address
+                mBindCtr = MAX_BIND_COUNT;
+                mState = YD717_BIND2;
+                sendPacket(1);
+                break;
+        }
+        break;
+
+    case YD717_BIND4:
+        switch (checkStatus()) {
+            case PKT_PENDING:
+                return PACKET_CHKTIME_uS;               // packet send not yet complete
+
+            case PKT_TIMEOUT:
+                LOG("force AutoACK disabled and binded\n");
+                mDev.writeReg(NRF24L01_01_EN_AA, 0x00); // disable AutoACK
+                // no break
+
+            case PKT_ACKED:
+                LOG("BINDED\n");
+                mState = YD717_DATA;
+                break;
         }
         break;
 
     case YD717_DATA:
-
-#ifdef YD717_TELEMETRY
-        update_telemetry();
-#endif
+        updateTelemetry();
         if (checkStatus() == PKT_PENDING)
             return PACKET_CHKTIME_uS;           // packet send not yet complete
 
         sendPacket(0);
         break;
     }
+
     return PACKET_PERIOD_uS;
 }
 
 int RFProtocolYD717::init(u8 bind)
 {
+    __PRINT_FUNC__;
     RFProtocol::registerCallback(this);
     mPacketCtr = 0;
 

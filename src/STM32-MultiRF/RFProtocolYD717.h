@@ -22,7 +22,6 @@
 
 class RFProtocolYD717 : public RFProtocol
 {
-#define PAYLOADSIZE          8  // receive data pipes set to this size, but unused
 #define MAX_PACKET_SIZE      9  // YD717 packets have 8-byte payload, Syma X4 is 9
 #define ADDR_BUF_SIZE        5
 

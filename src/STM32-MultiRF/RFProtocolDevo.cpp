@@ -184,9 +184,6 @@ s32 RFProtocolDevo::convFloatStr2Int(u8 *ptr)
 
 void RFProtocolDevo::parseTelemetryPacket(u8 *packet)
 {
-    if (!getTM())
-        return;
-
     if((packet[0] & 0xF0) != TELEMETRY_ENABLE)
         return;
 
@@ -200,66 +197,66 @@ void RFProtocolDevo::parseTelemetryPacket(u8 *packet)
 
     switch (packet[0]) {
         case 0x30:
-            getTM()->setVolt(0, packet[1], 10);     //In 1/10 of Volts
-            getTM()->setVolt(1, packet[3], 10);
-            getTM()->setVolt(2, packet[5], 10);
-            getTM()->setRPM(0, packet[7] * 120);    //In RPM
-            getTM()->setRPM(1, packet[9] * 120);
+            getTM().setVolt(0, packet[1], 10);     //In 1/10 of Volts
+            getTM().setVolt(1, packet[3], 10);
+            getTM().setVolt(2, packet[5], 10);
+            getTM().setRPM(0, packet[7] * 120);    //In RPM
+            getTM().setRPM(1, packet[9] * 120);
             break;
 
         case 0x31:
-            getTM()->setTemp(0, packet[1] == 0xff ? 0 : packet[1] - 20); //In degrees-C
-            getTM()->setTemp(0, packet[2] == 0xff ? 0 : packet[2] - 20);
-            getTM()->setTemp(0, packet[3] == 0xff ? 0 : packet[3] - 20);
-            getTM()->setTemp(0, packet[4] == 0xff ? 0 : packet[4] - 20);
+            getTM().setTemp(0, packet[1] == 0xff ? 0 : packet[1] - 20); //In degrees-C
+            getTM().setTemp(0, packet[2] == 0xff ? 0 : packet[2] - 20);
+            getTM().setTemp(0, packet[3] == 0xff ? 0 : packet[3] - 20);
+            getTM().setTemp(0, packet[4] == 0xff ? 0 : packet[4] - 20);
+            break;
+
+        /* GPS Data
+           32: 30333032302e3832373045fb  = 030°20.8270E
+           33: 353935342e373737364e0700  = 59°54.776N
+           34: 31322e380000004d4d4e45fb  = 12.8 MMNE (altitude maybe)?
+           35: 000000000000302e30300000  = 0.00 (probably speed)
+           36: 313832353532313531303132  = 2012-10-15 18:25:52 (UTC)
+        */
+        case 0x32:
+            getTM().setLon(((packet[1]-'0') * 100 + (packet[2]-'0') * 10 + (packet[3]-'0')) * 3600000
+                            + ((packet[4]-'0') * 10 + (packet[5]-'0')) * 60000
+                            + ((packet[7]-'0') * 1000 + (packet[8]-'0') * 100
+                            + (packet[9]-'0') * 10 + (packet[10]-'0')) * 6);
+            break;
+
+        case 0x33:
+            getTM().setLat(((packet[1]-'0') * 10 + (packet[2]-'0')) * 3600000
+                            + ((packet[3]-'0') * 10 + (packet[4]-'0')) * 60000
+                            + ((packet[6]-'0') * 1000 + (packet[7]-'0') * 100
+                            + (packet[8]-'0') * 10 + (packet[9]-'0')) * 6);
+            if (packet[10] == 'S')
+                getTM().setLat(getTM().getLat() * -1);
+            break;
+
+        case 0x34:
+            getTM().setAlt(convFloatStr2Int(packet + 1));
+            break;
+
+        case 0x35:
+            getTM().setVel(convFloatStr2Int(packet + 7));
+            break;
+
+        case 0x36:
+            u8 hour  = (packet[1]-'0') * 10 + (packet[2]-'0');
+            u8 min   = (packet[3]-'0') * 10 + (packet[4]-'0');
+            u8 sec   = (packet[5]-'0') * 10 + (packet[6]-'0');
+            u8 day   = (packet[7]-'0') * 10 + (packet[8]-'0');
+            u8 month = (packet[9]-'0') * 10 + (packet[10]-'0');
+            u8 year  = (packet[11]-'0') * 10 + (packet[12]-'0'); // + 2000
+            getTM().setTime(((year & 0x3F) << 26)
+                               | ((month & 0x0F) << 22)
+                               | ((day & 0x1F) << 17)
+                               | ((hour & 0x1F) << 12)
+                               | ((min & 0x3F) << 6)
+                               | ((sec & 0x3F) << 0));
             break;
     }
-
-#if 0
-    /* GPS Data
-       32: 30333032302e3832373045fb  = 030°20.8270E
-       33: 353935342e373737364e0700  = 59°54.776N
-       34: 31322e380000004d4d4e45fb  = 12.8 MMNE (altitude maybe)?
-       35: 000000000000302e30300000  = 0.00 (probably speed)
-       36: 313832353532313531303132  = 2012-10-15 18:25:52 (UTC)
-    */
-    if (packet[0] == 0x32) {
-        Telemetry.gps.longitude = ((packet[1]-'0') * 100 + (packet[2]-'0') * 10 + (packet[3]-'0')) * 3600000
-                                  + ((packet[4]-'0') * 10 + (packet[5]-'0')) * 60000
-                                  + ((packet[7]-'0') * 1000 + (packet[8]-'0') * 100
-                                     + (packet[9]-'0') * 10 + (packet[10]-'0')) * 6;
-        if (packet[11] == 'W')
-            Telemetry.gps.longitude *= -1;
-    }
-    if (packet[0] == 0x33) {
-        Telemetry.gps.latitude = ((packet[1]-'0') * 10 + (packet[2]-'0')) * 3600000
-                                  + ((packet[3]-'0') * 10 + (packet[4]-'0')) * 60000
-                                  + ((packet[6]-'0') * 1000 + (packet[7]-'0') * 100
-                                     + (packet[8]-'0') * 10 + (packet[9]-'0')) * 6;
-        if (packet[10] == 'S')
-            Telemetry.gps.latitude *= -1;
-    }
-    if (packet[0] == 0x34) {
-        Telemetry.gps.altitude = convFloatStr2Int(packet+1);
-    }
-    if (packet[0] == 0x35) {
-        Telemetry.gps.velocity = convFloatStr2Int(packet+7);
-    }
-    if (packet[0] == 0x36) {
-        u8 hour  = (packet[1]-'0') * 10 + (packet[2]-'0');
-        u8 min   = (packet[3]-'0') * 10 + (packet[4]-'0');
-        u8 sec   = (packet[5]-'0') * 10 + (packet[6]-'0');
-        u8 day   = (packet[7]-'0') * 10 + (packet[8]-'0');
-        u8 month = (packet[9]-'0') * 10 + (packet[10]-'0');
-        u8 year  = (packet[11]-'0') * 10 + (packet[12]-'0'); // + 2000
-        Telemetry.gps.time = ((year & 0x3F) << 26)
-                           | ((month & 0x0F) << 22)
-                           | ((day & 0x1F) << 17)
-                           | ((hour & 0x1F) << 12)
-                           | ((min & 0x3F) << 6)
-                           | ((sec & 0x3F) << 0);
-    }
-#endif
 }
 
 void RFProtocolDevo::setBoundSOPCodes(void)

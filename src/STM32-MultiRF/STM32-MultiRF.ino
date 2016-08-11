@@ -56,6 +56,7 @@ static u8 initProtocol(u32 id)
     u8  ret = 0;
 
     // protocol
+    timer_disable_irq(Timer2.c_dev(), TIMER_CH1);
     if (mRFProto) {
         delete mRFProto;
         mRFProto = NULL;
@@ -143,12 +144,19 @@ void setup()
     mRcvr->init();
 
 #if SIMUL
+
+    mRcvr->setRC(RFProtocol::CH_THROTTLE, CHAN_MIN_VALUE);
+    mRcvr->setRC(RFProtocol::CH_AILERON, 0);
+    mRcvr->setRC(RFProtocol::CH_RUDDER, 0);
+    mRcvr->setRC(RFProtocol::CH_ELEVATOR, 0);
+
     struct Config conf;
 
     conf.dwSignature = 0xCAFEBABE;
 //    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DSMX, 1);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DEVO, 0);
     conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_SYMAX, 0);
+//    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_YD717, 1);
     conf.dwConID     = 0x12345678;
     conf.ucPower     = TXPOWER_100mW;
 
@@ -197,7 +205,7 @@ void loop()
             switch (ch) {
                 case 'b':
                     sim = 0;
-                    mRFProto->init();
+                    mRFProto->init(1);
                     break;
 
                 case 's':
@@ -238,7 +246,6 @@ void loop()
         }
 #else
         u32 proto = mRcvr->loop();
-
         if (proto) {
             u8  func   = RFProtocol::getFunc(proto);
             u32 pureID = RFProtocol::getIDExceptFunc(proto);
@@ -268,9 +275,7 @@ void loop()
 
     if (mRFProto) {
         mRFProto->injectControls(mRcvr->getRCs(), mRcvr->getChCnt());
-        if (mRFProto->getTM()) {
-            mRFProto->getTM()->update();
-        }
+        mRFProto->getTM().update();
     }
     DRAIN_LOG();
 }
