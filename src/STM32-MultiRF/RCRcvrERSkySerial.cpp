@@ -277,7 +277,7 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
 
         u32 val = get32(p); // = *(u32*)p;
         val = ((val >> dec) & 0x7ff);
-        sRC[i] =  map(val, 204, 1844, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
+        sRC[i] =  map(val, 0, 2047, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
     }
 
     return ret;
