@@ -196,10 +196,11 @@ u32 RCRcvrERSkySerial::loop(void)
             case STATE_BODY:
                 if (mOffset < mDataSize) {
                     mRxPacket[mOffset++] = ch;
-                } else {
-                    ret = handlePacket(mRxPacket, mDataSize);
-                    mState = STATE_IDLE;
-                    rxSize = 0;             // no more than one command per cycle
+                    if (mOffset == mDataSize) {
+                        ret = handlePacket(mRxPacket, mDataSize);
+                        mState = STATE_IDLE;
+                        rxSize = 0;             // no more than one command per cycle
+                    }
                 }
                 break;
         }
@@ -244,9 +245,6 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
     u8 rxnum  = data[1] & 0x0f;          // 4 bit
     u8 option = data[2];
 
-    u8 *p  = &data[2];
-    u8 dec = -3;
-
     if (proto != mProto || sub != mSubProto || func != mFunc) {
         mProto    = proto;
         mSubProto = sub;
@@ -266,6 +264,9 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
         }
     }
 
+    u8 *p  = &data[2];
+    s8 dec = -3;
+
     // 11 bit * 16 channel
     for (u8 i = 0; i < 8; i++) {
         dec += 3;
@@ -275,9 +276,10 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
         }
         p++;
 
-        u32 val = get32(p); // = *(u32*)p;
-        val = ((val >> dec) & 0x7ff);
-        sRC[i] =  map(val, 0, 2047, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
+        u32 val = get32(p);
+        val = (val >> dec) & 0x7ff;
+        val = constrain(val, 205, 1845);
+        sRC[i] =  map(val, 205, 1845, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
     }
 
     return ret;

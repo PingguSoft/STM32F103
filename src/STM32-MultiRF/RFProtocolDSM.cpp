@@ -183,6 +183,7 @@ void RFProtocolDSM::build_data_packet(u8 upper)
     }
 
     u16 max = 1 << bits;
+    u16 pct_100 = (u32)max * 100 / 150;
 
     for (i = 0; i < 7; i++) {
        u8  idx = pgm_read_byte(chmap + (upper * 7 + i));
@@ -196,10 +197,12 @@ void RFProtocolDSM::build_data_packet(u8 upper)
                 value = (idx == 0) ? 1 : (max >> 1);
             } else {
                 ch = (idx < 4) ? pgm_read_byte(ch_cvt + idx) : idx;
-                value = map(getControl(ch) , CHAN_MIN_VALUE, CHAN_MAX_VALUE, 10, max - 5);
+                value = (s32)getControl(ch) * (pct_100 / 2) / CHAN_MAX_VALUE + (max / 2);
             }
             if (value >= max)
                 value = max - 1;
+            else if (value < 0)
+                value = 0;
             value |= ((upper && i == 0) ? 0x8000 : 0) | (idx << bits);
        }
        mPacketBuf[i * 2 + 2] = (value >> 8) & 0xff;
