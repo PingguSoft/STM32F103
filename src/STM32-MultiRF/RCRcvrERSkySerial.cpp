@@ -268,7 +268,7 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
     s8 dec = -3;
 
     // 11 bit * 16 channel
-    for (u8 i = 0; i < 8; i++) {
+    for (u8 i = 0; i < CH_CNT; i++) {
         dec += 3;
         if (dec >= 8) {
             dec -= 8;

@@ -18,7 +18,7 @@
 #include "Common.h"
 #include "RFProtocol.h"
 
-#define CH_CNT      16
+#define CH_CNT      8
 
 class RCRcvr
 {
