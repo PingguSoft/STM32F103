@@ -50,6 +50,7 @@ private:
     u16  dsm2_cb(u32 now, u32 expected);
     void initialize(u8 bind);
     void buildPacket(void);
+	u16  getChValue(s16 val, u16 max);
 
 // variables
     DeviceCYRF6936  mDev;

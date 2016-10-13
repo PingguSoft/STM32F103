@@ -33,7 +33,7 @@
 #include "Telemetry.h"
 
 #define FW_VERSION  0x0120
-#define SIMUL       1
+#define SIMUL       0
 
 static u32 mSelProto = 0;
 static u8 mBaudAckLen;
@@ -153,12 +153,13 @@ void setup()
     struct Config conf;
 
     conf.dwSignature = 0xCAFEBABE;
-    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DSMX, 1);
+
+    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DSMX, 0);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DEVO, 0);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_SYMAX, 0);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_YD717, 1);
     conf.dwConID     = 0x12345678;
-    conf.ucPower     = TXPOWER_100mW;
+    conf.ucPower     = TXPOWER_10mW;
 
     if (conf.dwSignature == 0xCAFEBABE) {
         initProtocol(conf.dwProtoID);
@@ -217,7 +218,7 @@ void loop()
 
         if (sim) {
             static u32 mLastTS;
-            if (ts - mLastTS > 20000) {
+            if (ts - mLastTS > 10000) {
                 if (thr <  CHAN_MIN_VALUE || thr > CHAN_MAX_VALUE)
                     step_thr = -step_thr;
 
@@ -268,6 +269,7 @@ void loop()
                 if (func & FUNC_POWER_HI)
                     power = TXPOWER_150mW;
                 mRFProto->setRFPower(power);
+                LOG("RF Power : %d\n", power);
             }
         }
 #endif

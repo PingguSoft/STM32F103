@@ -20,7 +20,6 @@
 #include "RCRcvrPPM.h"
 
 #define PIN_PPM     PB11
-#define CH_CNT      8
 
 static void calcPPM();
 
@@ -56,7 +55,7 @@ static void calcPPM()
     if (diff > 2500) {
         ch = 0;
     } else {
-        if (ch < CH_CNT - 1) {
+        if (ch < CH_CNT) {
             u16 val = constrain(diff, PPM_MIN_VALUE, PPM_MAX_VALUE);
             RCRcvr::sRC[ch++] = map(val, PPM_MIN_VALUE, PPM_MAX_VALUE, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
         }

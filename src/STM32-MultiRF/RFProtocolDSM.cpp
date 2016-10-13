@@ -111,12 +111,12 @@ static const PROGMEM u8 TBL_PNCODES[5][9][8] = {
 static const PROGMEM u8 TBL_PN_BIND[] = { 0xc6,0x94,0x22,0xfe,0x48,0xe6,0x57,0x4e };
 
 // MAP order : 0123 - TAER
-static const PROGMEM u8 ch_map4[] = {0, 1, 2, 3, 0xff, 0xff, 0xff};     //Guess
-static const PROGMEM u8 ch_map5[] = {0, 1, 2, 3, 4,    0xff, 0xff};     //Guess
-static const PROGMEM u8 ch_map6[] = {1, 5, 2, 3, 0,    4,    0xff};     //HP6DSM
-static const PROGMEM u8 ch_map7[] = {1, 5, 2, 4, 3,    6,    0};        //DX6i
-static const PROGMEM u8 ch_map8[] = {1, 5, 2, 3, 6,    0xff, 0xff, 4, 0, 7,    0xff, 0xff, 0xff, 0xff}; //DX8
-static const PROGMEM u8 ch_map9[] = {3, 2, 1, 5, 0,    4,    6,    7, 8, 0xff, 0xff, 0xff, 0xff, 0xff}; //DM9
+static const PROGMEM u8 ch_map4[]  = {0, 1, 2, 3, 0xff, 0xff, 0xff};     //Guess
+static const PROGMEM u8 ch_map5[]  = {0, 1, 2, 3, 4,    0xff, 0xff};     //Guess
+static const PROGMEM u8 ch_map6[]  = {1, 5, 2, 3, 0,    4,    0xff};     //HP6DSM
+static const PROGMEM u8 ch_map7[]  = {1, 5, 2, 4, 3,    6,    0};        //DX6i
+static const PROGMEM u8 ch_map8[]  = {1, 5, 2, 3, 6,    0xff, 0xff, 4, 0, 7,    0xff, 0xff, 0xff, 0xff}; //DX8
+static const PROGMEM u8 ch_map9[]  = {3, 2, 1, 5, 0,    4,    6,    7, 8, 0xff, 0xff, 0xff, 0xff, 0xff}; //DM9
 static const PROGMEM u8 ch_map10[] = {3, 2, 1, 5, 0,    4,    6,    7, 8, 9, 0xff, 0xff, 0xff, 0xff};
 static const PROGMEM u8 ch_map11[] = {3, 2, 1, 5, 0,    4,    6,    7, 8, 9, 10, 0xff, 0xff, 0xff};
 static const PROGMEM u8 ch_map12[] = {3, 2, 1, 5, 0,    4,    6,    7, 8, 9, 10, 11, 0xff, 0xff};
@@ -161,6 +161,11 @@ void RFProtocolDSM::build_bind_packet(void)
 }
 
 
+u16 RFProtocolDSM::getChValue(s16 val, u16 max)
+{
+    return map(val, CHAN_MIN_VALUE, CHAN_MAX_VALUE, 90, max - 110);
+}
+
 void RFProtocolDSM::build_data_packet(u8 upper)
 {
     u8 i;
@@ -183,7 +188,6 @@ void RFProtocolDSM::build_data_packet(u8 upper)
     }
 
     u16 max = 1 << bits;
-    u16 pct_100 = (u32)max * 100 / 150;
 
     for (i = 0; i < 7; i++) {
        u8  idx = pgm_read_byte(chmap + (upper * 7 + i));
@@ -194,15 +198,11 @@ void RFProtocolDSM::build_data_packet(u8 upper)
            value = 0xffff;
        } else {
             if (mIsBinding) {
-                value = (idx == 0) ? 1 : (max >> 1);
+                value = (idx == 0) ? getChValue(CHAN_MIN_VALUE, max) : getChValue(CHAN_MID_VALUE, max);
             } else {
                 ch = (idx < 4) ? pgm_read_byte(ch_cvt + idx) : idx;
-                value = (s32)getControl(ch) * (pct_100 / 2) / CHAN_MAX_VALUE + (max / 2);
+				value =  getChValue(getControl(ch), max);
             }
-            if (value >= max)
-                value = max - 1;
-            else if (value < 0)
-                value = 0;
             value |= ((upper && i == 0) ? 0x8000 : 0) | (idx << bits);
        }
        mPacketBuf[i * 2 + 2] = (value >> 8) & 0xff;
