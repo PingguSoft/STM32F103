@@ -22,8 +22,8 @@
 #define NUM_WAIT_LOOPS  (100 / 5)   //each loop is ~5us.  Do not wait more than 100us
 
 enum {
-    PROTOOPTS_DSMX = 1,
-    PROTOOPTS_TELEMETRY = 2,
+    PROTOOPTS_DSMX      = BV(0),
+    PROTOOPTS_TELEMETRY = BV(1),
     LAST_PROTO_OPT,
 };
 
@@ -145,8 +145,8 @@ void RFProtocolDSM::build_bind_packet(void)
     mPacketBuf[11] = mChanCnt;
 
     if (getProtocolOpt() & PROTOOPTS_DSMX) {
-        mPacketBuf[12] = (mChanCnt < 8) ? 0xa2 : 0xb2;
-//        mPacketBuf[12] = mChanCnt < 8 && Model.proto_opts[PROTOOPTS_TELEMETRY] == TELEM_OFF ? 0xa2 : 0xb2;
+//        mPacketBuf[12] = (mChanCnt < 8) ? 0xa2 : 0xb2;
+        mPacketBuf[12] = (mChanCnt < 8 && (getProtocolOpt() & PROTOOPTS_TELEMETRY) != PROTOOPTS_TELEMETRY) ? 0xa2 : 0xb2;
     } else {
         mPacketBuf[12] = mChanCnt < 8 ? 0x01 : 0x02;
     }
@@ -555,7 +555,7 @@ NO_INLINE static void parse_telemetry_packet()
 #endif
 
 
-#define CH1_CH2_DELAY 4010  // Time between write of channel 1 and channel 2
+#define CH1_CH2_DELAY 4000  // Time between write of channel 1 and channel 2
 #define WRITE_DELAY   1550  // Time after write to verify write complete
 #define READ_DELAY     400  // Time before write to check read state, and switch channel
 
@@ -665,10 +665,11 @@ u16 RFProtocolDSM::dsm2_cb(u32 now, u32 expected)
                 mState = DSM2_CH2_READ_B;
                 //Reseat RX mode just in case any error
                 mDev.writeReg(CYRF_0F_XACT_CFG, (mDev.readReg(CYRF_0F_XACT_CFG) | 0x20));  // Force end mState
-                int i = 0;
-                while (mDev.readReg(CYRF_0F_XACT_CFG) & 0x20) {
-                    if(++i > NUM_WAIT_LOOPS)
+                while (mDev.readReg(CYRF_04_TX_IRQ_STATUS) & 0x02) {
+                    if(micros() - now > 1000) {
+                        LOG(F("MAX WAIT IRQ4\n"));
                         break;
+                    }
                 }
                 mDev.writeReg(CYRF_05_RX_CTRL, 0x80); //Prepare to receive
                 return 11000;

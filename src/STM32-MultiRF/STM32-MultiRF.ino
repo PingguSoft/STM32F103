@@ -33,7 +33,7 @@
 #include "Telemetry.h"
 
 #define FW_VERSION  0x0120
-#define SIMUL       0
+#define SIMUL       1
 
 static u32 mSelProto = 0;
 static u8 mBaudAckLen;
@@ -153,9 +153,9 @@ void setup()
     struct Config conf;
 
     conf.dwSignature = 0xCAFEBABE;
-//    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DSMX, 1);
+    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DSMX, 1);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DEVO, 0);
-    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_SYMAX, 0);
+//    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_SYMAX, 0);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_YD717, 1);
     conf.dwConID     = 0x12345678;
     conf.ucPower     = TXPOWER_100mW;

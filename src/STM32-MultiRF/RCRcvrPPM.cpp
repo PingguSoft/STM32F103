@@ -37,12 +37,12 @@ void RCRcvrPPM::init(void)
     sRC[RFProtocol::CH_THROTTLE] = CHAN_MIN_VALUE;
 
     pinMode(PIN_PPM, INPUT);
-    attachInterrupt(PIN_PPM - 2, calcPPM, RISING);
+    attachInterrupt(PIN_PPM, calcPPM, RISING);
 }
 
 void RCRcvrPPM::close(void)
 {
-    detachInterrupt(PIN_PPM - 2);
+    detachInterrupt(PIN_PPM);
 }
 
 static void calcPPM()

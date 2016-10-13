@@ -23,10 +23,9 @@ void printf2(char *fmt, ... )
     Serial.print(buf);
 }
 
-void setup() 
+void setup()
 {
     Serial.begin(115200);
-    
     SPI.begin();
     SPI.setBitOrder(MSBFIRST);
     SPI.setDataMode(SPI_MODE3);
@@ -34,14 +33,14 @@ void setup()
 
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
     display.display();
-  
+
     if (initSensor() == false )
         Serial.println("Failed to initialise ADNS3080");
 }
 
-void loop() 
+void loop()
 {
-#if 0    
+#if 1
     Serial.println("image data --------------");
     sendData();
     Serial.println("-------------------------");
@@ -60,7 +59,7 @@ static void setPixel(int x, int y, byte pixel, byte *buf, int stride)
     *(buf + (stride * y) + x) = pixel;
 }
 
-static int findNearestColor(byte color) 
+static int findNearestColor(byte color)
 {
 	return (color >= 0x7E) ? 255 : 0;
 }
@@ -79,7 +78,7 @@ static void dither(byte *img, int width, int height)
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			int  pixel  = getPixel(x, y, img, width);
-			int  newPix = findNearestColor(pixel); 
+			int  newPix = findNearestColor(pixel);
             setPixel(x, y, newPix, img, width);
 
             int err = pixel - newPix;
@@ -172,6 +171,7 @@ void sendData(void)
 {
     int     i, j;
     int     cnt;
+    int     pos;
     boolean bFoundFirst = false;
     byte    regValue;
     byte    pixelValue;
@@ -181,22 +181,22 @@ void sendData(void)
 
     // wait 3 frame periods + 10 nanoseconds for frame to be captured
     // min frame speed is 2000 frames/second so 1 frame = 500 nano seconds.  so 500 x 3 + 10 = 1510
-    delayMicroseconds(1510);  
+    delayMicroseconds(1510);
 
     digitalWrite(_cs_pin, LOW);
     txCmd = ADNS3080_PIXEL_BURST;
-    SPI.dmaTransfer(txCmd, rxbuf, sizeof(rxbuf));
+    rxbuf[0] = ADNS3080_PIXEL_BURST;
+    SPI.dmaTransfer(rxbuf, rxbuf, sizeof(rxbuf));
     digitalWrite(_cs_pin, HIGH);
 
     for (i = 0; i < sizeof(rxbuf); i++) {
         if (!bFoundFirst) {
             if (rxbuf[i] & 0x40) {
+                pos = i;
                 bFoundFirst = true;
                 cnt = 0;
-                //break;
             }
         }
-
         if (bFoundFirst) {
             pixelValue = (rxbuf[i] << 2);
             Serial.print(pixelValue, DEC);
@@ -207,11 +207,10 @@ void sendData(void)
                 Serial.println();
             }
         }
-        
     }
-/*
+
     display.clearDisplay();
-    byte *img = &rxbuf[i];
+    byte *img = &rxbuf[pos];
     dither(img, ADNS3080_PIXELS_X, ADNS3080_PIXELS_Y);
 
     int color;
@@ -230,14 +229,13 @@ void sendData(void)
         }
     }
     display.display();
-*/    
     reset();
 }
 
 int cnv2Complement(byte in)
 {
     int ret = in;
-    
+
     if (in & 0x80) {
         ret = -(0x100 - in);
     }
@@ -257,11 +255,12 @@ void dispMovement()
     sum_dy = 0;
 
     motion_reg = readReg(ADNS3080_MOTION);
+    printf2("REG : %02x\n", motion_reg);
 
     if (motion_reg & 0x80) {
 
         quality = (unsigned int)readReg(ADNS3080_SQUAL);
-        
+
         do {
             if (motion_reg & 0x80) {
                 dx = (signed char)readReg(ADNS3080_DELTA_X);
