@@ -114,7 +114,8 @@ enum MJXQ
 	WLH08	= 0,
 	X600	= 1,
 	X800	= 2,
-	H26D	= 3
+	H26D	= 3,
+	E010	= 4
 };
 
 enum FRSKYX
@@ -146,8 +147,9 @@ static const PROGMEM struct tbl TBL_CNV[] = {
     { MODE_CG023,  TX_NRF24L01, 255 },
     { MODE_BAYANG, TX_NRF24L01, 255 },
     { MODE_FRSKYX, TX_CC2500,   255 },
+    { MODE_ESKY,   TX_CC2500,   255 },
     { MODE_MT99XX, TX_NRF24L01, 255 },
-    { MODE_MJXQ,   TX_NRF24L01, 255 },
+    { MODE_MJXQ,   TX_NRF24L01, RFProtocol::PROTO_NRF24L01_MJXQ },
     { MODE_SHENQI, TX_NRF24L01, 255 },
     { MODE_FY326,  TX_NRF24L01, 255 },
     { MODE_SFHSS,  TX_CC2500,   255 },
@@ -172,6 +174,16 @@ void RCRcvrERSkySerial::close(void)
 {
 
 }
+
+#if 0
+extern "C" {
+void __irq_usart3(void);
+}
+
+void __irq_usart3(void)
+{
+}
+#endif
 
 u32 RCRcvrERSkySerial::loop(void)
 {
@@ -256,11 +268,22 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
             mFinalProto    = proto;
             mFinalSubProto = sub;
             mFinalFunc     = func;
-            const struct tbl *t = &TBL_CNV[proto];
-            if (t->proto != 255) {
-                ret = RFProtocol::buildID(t->chip, t->proto, sub, func);
+
+            struct tbl *t = NULL;
+            for (u8  i = 0; i < sizeof(TBL_CNV) / sizeof(struct tbl); i++) {
+                t = (struct tbl *)&TBL_CNV[i];
+                if (t->ersky == proto)
+                    break;
             }
-            LOG(F("FINAL PROTO ERSKY = %x %x %x [%x]\n"), proto, sub, func, ret);
+
+            if (t == NULL) {
+                LOG(F("NO PROTOCOL = %x %x %x [%x]\n"), proto, sub, func, ret);
+            } else {
+                if (t->proto != 255) {
+                    ret = RFProtocol::buildID(t->chip, t->proto, sub, func);
+                }
+                LOG(F("FINAL PROTO ERSKY = %x %x %x [%x]\n"), proto, sub, func, ret);
+            }
         }
     }
 

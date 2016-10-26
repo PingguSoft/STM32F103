@@ -28,6 +28,7 @@
 #include "RFProtocolDSM.h"
 #include "RFProtocolHubsan.h"
 #include "RFProtocolFlysky.h"
+#include "RFProtocolMJXQ.h"
 #include "RCRcvrPPM.h"
 #include "RCRcvrERSkySerial.h"
 #include "Telemetry.h"
@@ -35,14 +36,14 @@
 #define FW_VERSION  0x0120
 #define SIMUL       0
 
-static u32 mSelProto = 0;
-static u8 mBaudAckLen;
-static u8 mBaudChkCtr;
-static u8 mBaudAckStr[12];
-static RFProtocol *mRFProto = NULL;
-static RCRcvr     *mRcvr = NULL;
-static u32 mLastTS = 0;
-static u8  mLed = 0;
+static u32          mSelProto = 0;
+static u8           mBaudAckLen;
+static u8           mBaudChkCtr;
+static u8           mBaudAckStr[12];
+static RFProtocol   *mRFProto = NULL;
+static RCRcvr       *mRcvr = NULL;
+static u32          mLastTS = 0;
+static u8           mLed = 0;
 
 struct Config {
     u32 dwSignature;
@@ -72,6 +73,10 @@ static u8 initProtocol(u32 id)
 
                 case RFProtocol::PROTO_NRF24L01_YD717:
                     mRFProto = new RFProtocolYD717(id);
+                    break;
+
+                case RFProtocol::PROTO_NRF24L01_MJXQ:
+                    mRFProto = new RFProtocolMJXQ(id);
                     break;
 /*
                 case RFProtocol::PROTO_NRF24L01_V2x2:
@@ -130,6 +135,7 @@ static u8 initProtocol(u32 id)
         break;
 */
     }
+
     return ret;
 }
 
@@ -140,11 +146,9 @@ void setup()
     Serial.begin(115200);
     LOG(F("Start!!\n"));
 
+#if SIMUL
     mRcvr = new RCRcvrERSkySerial();
     mRcvr->init();
-
-#if SIMUL
-
     mRcvr->setRC(RFProtocol::CH_THROTTLE, CHAN_MIN_VALUE);
     mRcvr->setRC(RFProtocol::CH_AILERON, 0);
     mRcvr->setRC(RFProtocol::CH_RUDDER, 0);
@@ -154,7 +158,8 @@ void setup()
 
     conf.dwSignature = 0xCAFEBABE;
 
-    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DSMX, 0);
+    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_MJXQ, 4);
+//    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DSMX, 0);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DEVO, 0);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_SYMAX, 0);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_YD717, 1);
@@ -169,6 +174,9 @@ void setup()
 //            mRFProto->init();
         }
     }
+#else
+    mRcvr = new RCRcvrERSkySerial();
+    mRcvr->init();
 #endif
 }
 
@@ -177,7 +185,7 @@ s16 thr  = CHAN_MIN_VALUE;
 s16 ele  = CHAN_MID_VALUE;
 s16 ail  = CHAN_MAX_VALUE / 2;
 s16 rud  = CHAN_MIN_VALUE / 2;
-s16 step_thr = 2;
+s16 step_thr = 10;
 s16 step_ele = 2;
 s16 step_ail = 2;
 s16 step_rud = 2;
@@ -237,20 +245,24 @@ void loop()
                 rud += step_rud;
 
                 mRcvr->setRC(RFProtocol::CH_THROTTLE, thr);
-                mRcvr->setRC(RFProtocol::CH_AILERON, ail);
-                mRcvr->setRC(RFProtocol::CH_RUDDER, rud);
-                mRcvr->setRC(RFProtocol::CH_ELEVATOR, ele);
-//                LOG("T:%4d R:%4d E:%4d A:%4d %4d %4d %4d %4d\n", mRcvr->getRC(0), mRcvr->getRC(1), mRcvr->getRC(2), mRcvr->getRC(3), mRcvr->getRC(4),
-//                    mRcvr->getRC(5), mRcvr->getRC(6), mRcvr->getRC(7), mRcvr->getRC(8));
+//                mRcvr->setRC(RFProtocol::CH_AILERON, ail);
+//                mRcvr->setRC(RFProtocol::CH_RUDDER, rud);
+//                mRcvr->setRC(RFProtocol::CH_ELEVATOR, ele);
+                LOG("T:%4d R:%4d E:%4d A:%4d %4d %4d %4d %4d\n", mRcvr->getRC(0), mRcvr->getRC(1), mRcvr->getRC(2), mRcvr->getRC(3), mRcvr->getRC(4),
+                    mRcvr->getRC(5), mRcvr->getRC(6), mRcvr->getRC(7), mRcvr->getRC(8));
                 mLastTS = ts;
             }
+//            u32 proto = mRcvr->loop();
         }
 #else
+
+        LOG("T:%4d R:%4d E:%4d A:%4d %4d %4d %4d %4d\n", mRcvr->getRC(0), mRcvr->getRC(1), mRcvr->getRC(2), mRcvr->getRC(3), mRcvr->getRC(4),
+            mRcvr->getRC(5), mRcvr->getRC(6), mRcvr->getRC(7), mRcvr->getRC(8));
+
         u32 proto = mRcvr->loop();
         if (proto) {
             u8  func   = RFProtocol::getFunc(proto);
             u32 pureID = RFProtocol::getIDExceptFunc(proto);
-
             if (mSelProto != pureID) {
                 initProtocol(pureID);
                 mSelProto = pureID;
@@ -263,7 +275,6 @@ void loop()
                     mRFProto->init(1);
                 }
             }
-
             if (mRFProto) {
                 u8  power = TXPOWER_10mW;
                 if (func & FUNC_POWER_HI)
@@ -277,7 +288,7 @@ void loop()
 
     if (mRFProto) {
         mRFProto->injectControls(mRcvr->getRCs(), mRcvr->getChCnt());
-        mRFProto->getTM().update();
+        //mRFProto->getTM().update();
     }
     DRAIN_LOG();
 }

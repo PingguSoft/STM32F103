@@ -33,7 +33,7 @@ RFProtocol::RFProtocol(u32 id)
     mProtoID = id;
     initVars();
 
-    Timer2.setChannel1Mode(TIMER_OUTPUTCOMPARE);
+    Timer2.setChannel1Mode(TIMER_OUTPUT_COMPARE);
     Timer2.pause();
     Timer2.setCount(0);
     Timer2.setOverflow(65530);
@@ -130,11 +130,36 @@ void RFProtocol::injectControls(s16 *data, int size)
 {
     for (int i = 0; i < size; i++)
         mBufControls[i] = *data++;
+
+    for (int i = size; i < MAX_CHANNEL; i++)
+        mBufControls[i] = CHAN_MIN_VALUE;
 }
 
 s16 RFProtocol::getControl(u8 ch)
 {
     return mBufControls[ch];
+}
+
+
+// Channel value is converted to 8bit values full scale
+u8 RFProtocol::getControl_8b(u8 ch)
+{
+	return (u8) (map(getControl(ch), CHAN_MIN_VALUE, CHAN_MAX_VALUE, 0, 255));
+}
+
+// Channel value is converted to 8bit values to provided values scale
+u8 RFProtocol::getControl_8b(u8 ch, u8 min, u8 max)
+{
+	return (u8) (map(getControl(ch), CHAN_MIN_VALUE, CHAN_MAX_VALUE, min, max));
+}
+
+// Channel value is converted sign + magnitude 8bit values
+u8 RFProtocol::getControl_s8b(u8 ch)
+{
+	u8 ret;
+
+	ret = getControl_8b(ch);
+	return (ch < 128 ? 127 - ret : ret);
 }
 
 u8 RFProtocol::isStickMoved(u8 init)

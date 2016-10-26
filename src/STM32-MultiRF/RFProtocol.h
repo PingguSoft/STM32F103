@@ -39,6 +39,7 @@ public:
         PROTO_NRF24L01_BAYANG,
         PROTO_NRF24L01_CX10,
         PROTO_NRF24L01_KN,
+        PROTO_NRF24L01_MJXQ,
     };
 
     enum {
@@ -118,6 +119,11 @@ public:
     void injectControls(s16 *data, int size);
     s16  getControl(u8 ch);         // TREA order
     s16  getControlByOrder(u8 ch);  // AETR order : deviation order
+
+	u8   getControl_8b(u8 ch);
+	u8   getControl_8b(u8 ch, u8 min, u8 max);
+	u8   getControl_s8b(u8 ch);
+
     u8   isStickMoved(u8 init);
 
     // power

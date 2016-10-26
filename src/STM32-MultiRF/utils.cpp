@@ -43,7 +43,7 @@ u32 rand32()
 }
 
 #if __DEBUG__
-#define MAX_BUF_SIZE 1024
+#define MAX_BUF_SIZE 512
 
 struct ringBuf {
     volatile u8 buffer[MAX_BUF_SIZE];

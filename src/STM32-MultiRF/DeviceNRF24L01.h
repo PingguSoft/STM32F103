@@ -118,11 +118,30 @@ public:
 
     virtual void setRFModeImpl(enum RF_MODE mode);
 
+    void XN297_setTxAddr(const u8* addr, u8 len);
+    void XN297_setRxAddr(const u8* addr, u8 len);
+    void XN297_configure(u8 flags);
+    void XN297_setScrambledMode(const u8 mode);
+    u8   XN297_writePayload(u8* data, u8 len);
+    u8   XN297_readPayload(u8* data, u8 len);
+
+
+
+
 private:
     u8   strobe(u8 state);
+    u8   bit_reverse(u8 b_in);
+    u16  crc16_update(u16 crc, u8 a);
 
 // variables
     u8   mRFsetup;
+
+    u8  xn297_scramble_enabled;
+    u8  xn297_addr_len;
+    u8  xn297_tx_addr[5];
+    u8  xn297_rx_addr[5];
+    u8  xn297_crc;
+    u8  packet[32];
 };
 
 #endif
