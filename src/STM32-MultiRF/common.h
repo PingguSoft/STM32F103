@@ -48,9 +48,9 @@ typedef uint64_t u64;
 #define PPM_MIN_VALUE   1000
 #define PPM_MAX_VALUE   2000
 
-#define CHAN_MIN_VALUE -500
+#define CHAN_MIN_VALUE -512
 #define CHAN_MID_VALUE  0
-#define CHAN_MAX_VALUE  500
+#define CHAN_MAX_VALUE  512
 
 #define __DEBUG__       1
 

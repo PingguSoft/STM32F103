@@ -33,7 +33,7 @@ RFProtocol::RFProtocol(u32 id)
     mProtoID = id;
     initVars();
 
-    Timer2.setChannel1Mode(TIMER_OUTPUT_COMPARE);
+    Timer2.setMode(TIMER_CH1, TIMER_OUTPUT_COMPARE);
     Timer2.pause();
     Timer2.setCount(0);
     Timer2.setOverflow(65530);
@@ -52,14 +52,14 @@ RFProtocol::~RFProtocol()
 
 void RFProtocol::handleTimerIntr(void)
 {
-    timer_disable_irq(Timer2.c_dev(), TIMER_CH1);
     if (mChild) {
-        u16 next = mChild->callState(Timer2.getCount(), mNextTS);
-        Timer2.setCompare(TIMER_CH1, next);
-        mNextTS = next;
-        Timer2.refresh();
+        Timer2.pause();
+        u16 now = Timer2.getCount();
+        now = now + mChild->callState(now, mNextTS);
+        Timer2.setCompare(TIMER_CH1, now);
+        mNextTS = now;
+        Timer2.resume();
     }
-    timer_enable_irq(Timer2.c_dev(), TIMER_CH1);
 }
 
 void RFProtocol::registerCallback(RFProtocol *protocol)

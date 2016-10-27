@@ -18,7 +18,7 @@
 #include "Common.h"
 #include "RFProtocol.h"
 
-#define CH_CNT      8
+#define CH_CNT      16
 
 class RCRcvr
 {
@@ -54,6 +54,7 @@ public:
     virtual void close(void) = 0;
     virtual u8   getChCnt(void) = 0;
     virtual u32  loop(void) { return 0; }
+    virtual void handleRX(u8 data) { }
 
     // TREA1234
     // static for ISR routine

@@ -14,7 +14,6 @@
 */
 
 #include <SPI.h>
-
 #include "common.h"
 #include "utils.h"
 #include "RFProtocol.h"
@@ -167,7 +166,6 @@ void RCRcvrERSkySerial::init(void)
     mSubProto = 255;
     mFinalProto = 255;
     mFinalSubProto = 255;
-    Serial3.begin(100000, SERIAL_8E2);
 }
 
 void RCRcvrERSkySerial::close(void)
@@ -175,47 +173,44 @@ void RCRcvrERSkySerial::close(void)
 
 }
 
-#if 0
-extern "C" {
-void __irq_usart3(void);
-}
+static u8 sIdx = 0;
+static u8 sRxPacket[MAX_PACKET_SIZE];
+static u8 sRxPacketDone[MAX_PACKET_SIZE];
+static volatile u8 sFlag = 0;
 
-void __irq_usart3(void)
+#define SET_FLAG_RX_DONE        sFlag |= BV(0)
+#define CLR_FLAG_RX_DONE        sFlag &= ~BV(0)
+#define IS_FLAG_RX_DONE         ((sFlag & BV(0)) != 0)
+
+#define SET_FLAG_DO_NOT_UPDATE  sFlag |= BV(1)
+#define CLR_FLAG_DO_NOT_UPDATE  sFlag |= BV(1)
+#define IS_FLAG_DO_NOT_UPDATE   ((sFlag & BV(1)) != 0)
+
+void RCRcvrERSkySerial::handleRX(u8 data)
 {
+   if (sIdx == 0) {
+        if ((data & 0xfe) == 0x54) {
+            sRxPacket[sIdx++] = data;
+        }
+    } else {
+        sRxPacket[sIdx++] = data;
+        if (sIdx >= MAX_PACKET_SIZE) {
+            if (!IS_FLAG_RX_DONE) {
+                memcpy(sRxPacketDone, sRxPacket, MAX_PACKET_SIZE);
+                SET_FLAG_RX_DONE;
+            }
+            sIdx = 0;
+        }
+    }
 }
-#endif
 
 u32 RCRcvrERSkySerial::loop(void)
 {
     u32 ret = 0;
-    u8  rxSize = Serial3.available();
 
-    if (rxSize == 0)
-        return ret;
-
-    while (rxSize--) {
-        u8 ch = Serial3.read();
-
-        switch (mState) {
-            case STATE_IDLE:
-                if (ch == 0x55) {
-                    mState = STATE_BODY;
-                    mOffset = 0;
-                    mDataSize = 25;
-                }
-                break;
-
-            case STATE_BODY:
-                if (mOffset < mDataSize) {
-                    mRxPacket[mOffset++] = ch;
-                    if (mOffset == mDataSize) {
-                        ret = handlePacket(mRxPacket, mDataSize);
-                        mState = STATE_IDLE;
-                        rxSize = 0;             // no more than one command per cycle
-                    }
-                }
-                break;
-        }
+    if (IS_FLAG_RX_DONE) {
+        ret = handlePacket(sRxPacketDone, MAX_PACKET_SIZE);
+        CLR_FLAG_RX_DONE;
     }
 
     return ret;
@@ -227,35 +222,36 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
 {
     u32 ret = 0;
     u8  func = 0;
+    s16 rc[CH_CNT];
 
-    if (data[0] & 0x20) {       // check range
+    if (data[1] & 0x20) {       // check range
         func |= FUNC_RANGE;
     } else {
         func &= ~FUNC_RANGE;
     }
 
-    if (data[0] & 0x40) {       // check autobind(0x40)
+    if (data[1] & 0x40) {       // check autobind(0x40)
         func |= FUNC_AUTO_BIND;
     } else {
         func &= ~FUNC_AUTO_BIND;
     }
 
-    if (data[0] & 0x80) {       // check bind(0x80)
+    if (data[1] & 0x80) {       // check bind(0x80)
         func |= FUNC_BIND;
     } else {
         func &= ~FUNC_BIND;
     }
 
-    if (data[1] & 0x80) {       // low power
+    if (data[2] & 0x80) {       // low power
         func &= ~FUNC_POWER_HI;
     } else {
         func |= FUNC_POWER_HI;
     }
 
-    u8 proto  = data[0] & 0x1f;          // 5 bit
-    u8 sub    = (data[1] >> 4) & 0x07;   // 3 bit
-    u8 rxnum  = data[1] & 0x0f;          // 4 bit
-    u8 option = data[2];
+    u8 proto  = data[1] & 0x1f;          // 5 bit
+    u8 sub    = (data[2] >> 4) & 0x07;   // 3 bit
+    u8 rxnum  = data[2] & 0x0f;          // 4 bit
+    u8 option = data[3];
 
     if (proto != mProto || sub != mSubProto || func != mFunc) {
         mProto    = proto;
@@ -287,7 +283,7 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
         }
     }
 
-    u8 *p  = &data[2];
+    u8 *p  = data + 3;
     s8 dec = -3;
 
     // 11 bit * 16 channel
@@ -301,8 +297,16 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
 
         u32 val = get32(p);
         val = (val >> dec) & 0x7ff;
-        val = constrain(val, 205, 1845);
-        sRC[i] =  map(val, 205, 1845, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
+        if (200 < val && val < 1850) {
+            rc[i] = val;
+        } else {
+            return 0;
+        }
+    }
+
+    for (u8 i = 0; i < CH_CNT; i++) {
+        u16 val = constrain(rc[i], 200, 1845);
+        sRC[i] =  map(val, 200, 1845, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
     }
 
     return ret;

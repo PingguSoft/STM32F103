@@ -53,6 +53,7 @@ public:
     inline void  setSatCnt(u8 sat)                  { mGPS.satcount = sat;              mUpdateMask |= MASK_GPS; }
 
     void update(void);
+    u8   handleTX(u8 *data);
 
 private:
     u8   buildRSSI(u8 *buf);

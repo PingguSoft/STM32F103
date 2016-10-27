@@ -18,7 +18,7 @@
 #include "Common.h"
 #include "RCRcvr.h"
 
-#define MAX_PACKET_SIZE 25
+#define MAX_PACKET_SIZE 26
 
 #define FUNC_AUTO_BIND  BV(0)
 #define FUNC_BIND       BV(1)
@@ -32,6 +32,7 @@ public:
     virtual void close(void);
     virtual u8   getChCnt(void);
     virtual u32  loop(void);
+    virtual void handleRX(u8 data);
 
 private:
     u32 handlePacket(u8 *data, u8 size);

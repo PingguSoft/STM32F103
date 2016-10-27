@@ -18,7 +18,6 @@
 
 Telemetry::Telemetry()
 {
-//    Serial3.begin(115200);
     mUpdateMask = 0;
     memset(&mVolt, 0, sizeof(mVolt));
     memset(&mTemp, 0, sizeof(mTemp));
@@ -30,7 +29,7 @@ Telemetry::Telemetry()
 
 Telemetry::~Telemetry()
 {
-//    Serial3.end();
+
 }
 
 
@@ -213,10 +212,12 @@ u8 Telemetry::buildTMInfo(u8 *buf)
 
 void Telemetry::frameDSM(u8 rssi, u8 *buf, u8 size)
 {
+#if 0
     Serial3.write(0xAA);
     Serial3.write(rssi);
     for (u8 i = 0; i < size; i++)
         Serial3.write(buf[i]);
+#endif
 }
 
 void Telemetry::update(void)
@@ -260,5 +261,10 @@ void Telemetry::update(void)
         frameDSM(rssi, mTeleBuf, size);
         clearMask(MASK_GPS);
     }
+}
+
+u8 Telemetry::handleTX(u8 *data)
+{
+    return 0;
 }
 

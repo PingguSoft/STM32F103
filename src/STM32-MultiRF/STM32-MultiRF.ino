@@ -16,6 +16,7 @@
 #include <stdarg.h>
 #include <SPI.h>
 #include <Wire.h>
+#include <libmaple/usart.h>
 
 #include "common.h"
 #include "utils.h"
@@ -51,6 +52,36 @@ struct Config {
     u32 dwConID;
     u8  ucPower;
 };
+
+
+static inline __always_inline void handle_usart_irq(usart_reg_map *regs)
+{
+    u8 data;
+
+    if ((regs->CR1 & USART_CR1_RXNEIE) && (regs->SR & USART_SR_RXNE)) {
+        data = (u8)regs->DR;
+        if (mRcvr != NULL) {
+            mRcvr->handleRX(data);
+        }
+    }
+
+    if ((regs->CR1 & USART_CR1_TXEIE) && (regs->SR & USART_SR_TXE)) {
+        if (mRFProto != NULL) {
+            u8 ret = mRFProto->getTM().handleTX(&data);
+            if (ret > 0) {
+                regs->DR = data;
+            } else {
+                regs->DR = 0;
+                regs->CR1 &= ~((u32)USART_CR1_TXEIE);
+            }
+        }
+    }
+}
+
+extern "C" void __irq_usart3(void)
+{
+    handle_usart_irq(USART3_BASE);
+}
 
 static u8 initProtocol(u32 id)
 {
@@ -143,12 +174,16 @@ void setup()
 {
     pinMode(PC13, OUTPUT);
 
+    Serial3.begin(100000, SERIAL_8E2);
     Serial.begin(115200);
     LOG(F("Start!!\n"));
 
-#if SIMUL
+    nvic_irq_set_priority(Serial3.c_dev()->irq_num, 5);
+
     mRcvr = new RCRcvrERSkySerial();
     mRcvr->init();
+
+#if SIMUL
     mRcvr->setRC(RFProtocol::CH_THROTTLE, CHAN_MIN_VALUE);
     mRcvr->setRC(RFProtocol::CH_AILERON, 0);
     mRcvr->setRC(RFProtocol::CH_RUDDER, 0);
@@ -174,31 +209,25 @@ void setup()
 //            mRFProto->init();
         }
     }
-#else
-    mRcvr = new RCRcvrERSkySerial();
-    mRcvr->init();
 #endif
 }
 
 #if SIMUL
-s16 thr  = CHAN_MIN_VALUE;
-s16 ele  = CHAN_MID_VALUE;
-s16 ail  = CHAN_MAX_VALUE / 2;
-s16 rud  = CHAN_MIN_VALUE / 2;
-s16 step_thr = 10;
-s16 step_ele = 2;
-s16 step_ail = 2;
-s16 step_rud = 2;
-u8  sim = 0;
+static s16 thr  = CHAN_MIN_VALUE;
+static s16 ele  = CHAN_MID_VALUE;
+static s16 ail  = CHAN_MAX_VALUE / 2;
+static s16 rud  = CHAN_MIN_VALUE / 2;
+static s16 step_thr = 10;
+static s16 step_ele = 2;
+static s16 step_ail = 2;
+static s16 step_rud = 2;
+static u8  sim = 0;
 #endif
 
-u32 ts = 0;
-s32 alt = 0;
-u16 volt = 420;
 
 void loop()
 {
-    ts = micros();
+    u32 ts = micros();
 
     if (ts - mLastTS > 500000) {
         mLed = !mLed;
@@ -252,14 +281,14 @@ void loop()
                     mRcvr->getRC(5), mRcvr->getRC(6), mRcvr->getRC(7), mRcvr->getRC(8));
                 mLastTS = ts;
             }
-//            u32 proto = mRcvr->loop();
         }
 #else
 
-        LOG("T:%4d R:%4d E:%4d A:%4d %4d %4d %4d %4d\n", mRcvr->getRC(0), mRcvr->getRC(1), mRcvr->getRC(2), mRcvr->getRC(3), mRcvr->getRC(4),
-            mRcvr->getRC(5), mRcvr->getRC(6), mRcvr->getRC(7), mRcvr->getRC(8));
-
         u32 proto = mRcvr->loop();
+
+//        LOG("T:%4d R:%4d E:%4d A:%4d %4d %4d %4d %4d [%4d %4d]\n", mRcvr->getRC(0), mRcvr->getRC(1), mRcvr->getRC(2), mRcvr->getRC(3), mRcvr->getRC(4),
+//            mRcvr->getRC(5), mRcvr->getRC(6), mRcvr->getRC(7), mRcvr->getRC(8), mRcvr->getRC(9), mRcvr->getRC(10));
+
         if (proto) {
             u8  func   = RFProtocol::getFunc(proto);
             u32 pureID = RFProtocol::getIDExceptFunc(proto);
@@ -288,7 +317,7 @@ void loop()
 
     if (mRFProto) {
         mRFProto->injectControls(mRcvr->getRCs(), mRcvr->getChCnt());
-        //mRFProto->getTM().update();
+        mRFProto->getTM().update();
     }
     DRAIN_LOG();
 }

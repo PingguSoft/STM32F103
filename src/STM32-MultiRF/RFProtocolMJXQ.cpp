@@ -64,7 +64,7 @@ u8 RFProtocolMJXQ::calcCheckSum(void)
 {
     u8 sum = mPacketBuf[0];
 
-    for (int i=1; i < MAX_PACKET_SIZE-1; i++)
+    for (u8 i = 1; i < MAX_PACKET_SIZE - 1; i++)
         sum += mPacketBuf[i];
     return sum;
 }
@@ -106,7 +106,7 @@ void RFProtocolMJXQ::sendPacket(u8 bind)
     mPacketBuf[0] = getControl_8b(CH_THROTTLE);             // throttle
     mPacketBuf[1] = getControl_s8b(CH_RUDDER);              // rudder
     mPacketBuf[4] = 0x40;                                   // rudder does not work well with dyntrim
-    mPacketBuf[2] = 0x80 ^ getControl_s8b(CH_ELEVATOR);     // elevator
+    mPacketBuf[2] = getControl_s8b(CH_ELEVATOR);            // elevator
     // driven trims cause issues when headless is enabled
     mPacketBuf[5] = GET_FLAG(CHANNEL_HEADLESS, 1) ? 0x40 : CHAN2TRIM(mPacketBuf[2]); // trim elevator
     mPacketBuf[3] = getControl_s8b(CH_AILERON);          // aileron
@@ -131,7 +131,7 @@ void RFProtocolMJXQ::sendPacket(u8 bind)
             mPacketBuf[10] += GET_FLAG(CHANNEL_RTH, 0x02)
                         | GET_FLAG(CHANNEL_HEADLESS, 0x01);
             if (!bind) {
-                mPacketBuf[14] = 0x04
+                mPacketBuf[14] = 0x00
                            | GET_FLAG(CHANNEL_FLIP, 0x01)
                            | GET_FLAG(CHANNEL_PICTURE, 0x08)
                            | GET_FLAG(CHANNEL_VIDEO, 0x10)
@@ -180,7 +180,7 @@ void RFProtocolMJXQ::sendPacket(u8 bind)
     if (getProtocolOpt() == FORMAT_H26D) {
         mDev.writePayload(mPacketBuf, MAX_PACKET_SIZE);
     } else {
-//        mDev.XN297_writePayload(mPacketBuf, MAX_PACKET_SIZE);
+        mDev.XN297_writePayload(mPacketBuf, MAX_PACKET_SIZE);
     }
 
     // Check and adjust transmission power. We do this after
@@ -238,12 +238,11 @@ void RFProtocolMJXQ::init1()
         mDev.setBitrate(NRF24L01_BR_1M);
     }
     mDev.setRFPower(getRFPower());
-/*
+
     mDev.activate(0x73);                          // Activate feature register
     mDev.writeReg(NRF24L01_1C_DYNPD, 0x00);       // Disable dynamic payload length on all pipes
     mDev.writeReg(NRF24L01_1D_FEATURE, 0x00);
     mDev.activate(0x73);
-*/
 }
 
 void RFProtocolMJXQ::init2()

@@ -293,10 +293,9 @@ u8 DeviceNRF24L01::bit_reverse(u8 b_in)
     return b_out;
 }
 
+static const u16 polynomial = 0x1021;
 u16 DeviceNRF24L01::crc16_update(u16 crc, u8 a)
 {
-    const u16 polynomial = 0x1021;
-
     crc ^= a << 8;
     for (u8 i = 0; i < 8; ++i) {
         if (crc & 0x8000) {
@@ -318,7 +317,7 @@ void DeviceNRF24L01::XN297_setTxAddr(const u8* addr, u8 len)
     u8 buf[] = { 0x55, 0x0F, 0x71, 0x0C, 0x00 }; // bytes for XN297 preamble 0xC710F55 (28 bit)
     xn297_addr_len = len;
     if (xn297_addr_len < 4) {
-        for (int i = 0; i < 4; ++i) {
+        for (u8 i = 0; i < 4; ++i) {
             buf[i] = buf[i+1];
         }
     }
@@ -343,7 +342,6 @@ void DeviceNRF24L01::XN297_setRxAddr(const u8* addr, u8 len)
 
     u8 buf[] = { 0, 0, 0, 0, 0 };
     memcpy(buf, addr, len);
-
     memcpy(xn297_rx_addr, addr, len);
     for (u8 i = 0; i < xn297_addr_len; ++i) {
         buf[i] = xn297_rx_addr[i];
@@ -369,17 +367,15 @@ void DeviceNRF24L01::XN297_setScrambledMode(const u8 mode)
 
 u8 DeviceNRF24L01::XN297_writePayload(u8* data, u8 len)
 {
-    u8 res;
     u8 last = 0;
 
-#if 0
     if (xn297_addr_len < 4) {
         // If address length (which is defined by receive address length)
         // is less than 4 the TX address can't fit the preamble, so the last
         // byte goes here
         packet[last++] = 0x55;
     }
-    for (int i = 0; i < xn297_addr_len; ++i) {
+    for (u8 i = 0; i < xn297_addr_len; ++i) {
         packet[last] = xn297_tx_addr[xn297_addr_len-i-1];
         if(xn297_scramble_enabled)
             packet[last] ^= xn297_scramble[i];
@@ -396,25 +392,19 @@ u8 DeviceNRF24L01::XN297_writePayload(u8* data, u8 len)
     }
 
     if (xn297_crc) {
-        int offset = xn297_addr_len < 4 ? 1 : 0;
+        u8 offset = xn297_addr_len < 4 ? 1 : 0;
         u16 crc = 0xb5d2;   // initial crc
         for (u8 i = offset; i < last; ++i) {
             crc = crc16_update(crc, packet[i]);
         }
         if(xn297_scramble_enabled)
-            crc ^= xn297_crc_xorout_scrambled[xn297_addr_len - 3 + len];
+            crc ^= pgm_read_word(&xn297_crc_xorout_scrambled[xn297_addr_len - 3 + len]);
         else
-            crc ^= xn297_crc_xorout[xn297_addr_len - 3 + len];
+            crc ^= pgm_read_word(&xn297_crc_xorout[xn297_addr_len - 3 + len]);
         packet[last++] = crc >> 8;
         packet[last++] = crc & 0xff;
     }
-#endif
-    memset(packet, 0, 21);
-    last = 21;
-
-    res = writePayload(packet, last);
-
-    return res;
+    return writePayload(packet, last);
 }
 
 
