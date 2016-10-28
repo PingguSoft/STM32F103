@@ -45,7 +45,7 @@ enum {
 #define CHANNEL_RTH         CH_AUX6
 #define CHANNEL_AUTOFLIP    CH_AUX7  // X800, X600
 #define CHANNEL_PAN         CH_AUX8  // H26D
-#define CHANNEL_TILT        CH_AUX8
+#define CHANNEL_TILT        CH_AUX9
 
 // haven't figured out txid<-->rf channel mapping for MJX models
 struct id_ch_map {
@@ -106,11 +106,14 @@ void RFProtocolMJXQ::sendPacket(u8 bind)
     mPacketBuf[0] = getControl_8b(CH_THROTTLE);             // throttle
     mPacketBuf[1] = getControl_s8b(CH_RUDDER);              // rudder
     mPacketBuf[4] = 0x40;                                   // rudder does not work well with dyntrim
+
     mPacketBuf[2] = getControl_s8b(CH_ELEVATOR);            // elevator
     // driven trims cause issues when headless is enabled
     mPacketBuf[5] = GET_FLAG(CHANNEL_HEADLESS, 1) ? 0x40 : CHAN2TRIM(mPacketBuf[2]); // trim elevator
-    mPacketBuf[3] = getControl_s8b(CH_AILERON);          // aileron
+
+    mPacketBuf[3] = getControl_s8b(CH_AILERON);             // aileron
     mPacketBuf[6] = GET_FLAG(CHANNEL_HEADLESS, 1) ? 0x40 : CHAN2TRIM(mPacketBuf[3]); // trim aileron
+
     mPacketBuf[7] = mTxID[0];
     mPacketBuf[8] = mTxID[1];
     mPacketBuf[9] = mTxID[2];
@@ -126,12 +129,13 @@ void RFProtocolMJXQ::sendPacket(u8 bind)
         case FORMAT_H26D:
             mPacketBuf[10] = calcPanTilt();
             // fall through on purpose - no break
+
         case FORMAT_WLH08:
         case FORMAT_E010:
             mPacketBuf[10] += GET_FLAG(CHANNEL_RTH, 0x02)
                         | GET_FLAG(CHANNEL_HEADLESS, 0x01);
             if (!bind) {
-                mPacketBuf[14] = 0x00
+                mPacketBuf[14] = 0x00    // 0x04 : high rate
                            | GET_FLAG(CHANNEL_FLIP, 0x01)
                            | GET_FLAG(CHANNEL_PICTURE, 0x08)
                            | GET_FLAG(CHANNEL_VIDEO, 0x10)

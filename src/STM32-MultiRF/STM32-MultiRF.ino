@@ -170,20 +170,19 @@ static u8 initProtocol(u32 id)
     return ret;
 }
 
-void setup()
-{
-    pinMode(PC13, OUTPUT);
-
-    Serial3.begin(100000, SERIAL_8E2);
-    Serial.begin(115200);
-    LOG(F("Start!!\n"));
-
-    nvic_irq_set_priority(Serial3.c_dev()->irq_num, 5);
-
-    mRcvr = new RCRcvrERSkySerial();
-    mRcvr->init();
-
 #if SIMUL
+static s16 thr  = CHAN_MIN_VALUE;
+static s16 ele  = CHAN_MID_VALUE;
+static s16 ail  = CHAN_MAX_VALUE / 2;
+static s16 rud  = CHAN_MIN_VALUE / 2;
+static s16 step_thr = 10;
+static s16 step_ele = 2;
+static s16 step_ail = 2;
+static s16 step_rud = 2;
+static u8  sim = 0;
+
+void simul_setup()
+{
     mRcvr->setRC(RFProtocol::CH_THROTTLE, CHAN_MIN_VALUE);
     mRcvr->setRC(RFProtocol::CH_AILERON, 0);
     mRcvr->setRC(RFProtocol::CH_RUDDER, 0);
@@ -209,23 +208,9 @@ void setup()
 //            mRFProto->init();
         }
     }
-#endif
 }
 
-#if SIMUL
-static s16 thr  = CHAN_MIN_VALUE;
-static s16 ele  = CHAN_MID_VALUE;
-static s16 ail  = CHAN_MAX_VALUE / 2;
-static s16 rud  = CHAN_MIN_VALUE / 2;
-static s16 step_thr = 10;
-static s16 step_ele = 2;
-static s16 step_ail = 2;
-static s16 step_rud = 2;
-static u8  sim = 0;
-#endif
-
-
-void loop()
+void simul_loop()
 {
     u32 ts = micros();
 
@@ -236,7 +221,6 @@ void loop()
     }
 
     if (mRcvr) {
-#if SIMUL
         if (Serial.available()) {
             u8 ch = Serial.read();
 
@@ -282,8 +266,49 @@ void loop()
                 mLastTS = ts;
             }
         }
-#else
+    }
 
+    if (mRFProto) {
+        mRFProto->injectControls(mRcvr->getRCs(), mRcvr->getChCnt());
+        mRFProto->getTM().update();
+    }
+    DRAIN_LOG();
+}
+#endif
+
+void setup()
+{
+    pinMode(PC13, OUTPUT);
+
+    Serial3.begin(100000, SERIAL_8E2);
+    Serial.begin(115200);
+    LOG(F("Start!!\n"));
+
+    nvic_irq_set_priority(Serial3.c_dev()->irq_num, 5);
+
+    mRcvr = new RCRcvrERSkySerial();
+    mRcvr->init();
+
+#if SIMUL
+    simul_setup();
+#endif
+}
+
+
+void loop()
+{
+#if SIMUL
+    simul_loop();
+#else
+    u32 ts = micros();
+
+    if (ts - mLastTS > 500000) {
+        mLed = !mLed;
+        digitalWrite(PC13, mLed);
+        mLastTS = ts;
+    }
+
+    if (mRcvr) {
         u32 proto = mRcvr->loop();
 
 //        LOG("T:%4d R:%4d E:%4d A:%4d %4d %4d %4d %4d [%4d %4d]\n", mRcvr->getRC(0), mRcvr->getRC(1), mRcvr->getRC(2), mRcvr->getRC(3), mRcvr->getRC(4),
@@ -312,7 +337,6 @@ void loop()
                 LOG("RF Power : %d\n", power);
             }
         }
-#endif
     }
 
     if (mRFProto) {
@@ -320,4 +344,5 @@ void loop()
         mRFProto->getTM().update();
     }
     DRAIN_LOG();
+#endif
 }

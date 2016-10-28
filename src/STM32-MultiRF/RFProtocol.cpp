@@ -36,7 +36,7 @@ RFProtocol::RFProtocol(u32 id)
     Timer2.setMode(TIMER_CH1, TIMER_OUTPUT_COMPARE);
     Timer2.pause();
     Timer2.setCount(0);
-    Timer2.setOverflow(65530);
+    Timer2.setOverflow(0xffff);
     Timer2.setPrescaleFactor(CYCLES_PER_MICROSECOND);
     Timer2.refresh();
 }
@@ -139,7 +139,6 @@ s16 RFProtocol::getControl(u8 ch)
 {
     return mBufControls[ch];
 }
-
 
 // Channel value is converted to 8bit values full scale
 u8 RFProtocol::getControl_8b(u8 ch)

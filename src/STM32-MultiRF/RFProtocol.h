@@ -72,6 +72,10 @@ public:
         CH_AUX6,
         CH_AUX7,
         CH_AUX8,
+        CH_AUX9,
+        CH_AUX10,
+        CH_AUX11,
+        CH_AUX12,
         MAX_CHANNEL
     };
 
@@ -91,7 +95,7 @@ public:
     };
 
     // utility functions
-    static u32   buildID(u8 module, u8 proto, u8 option)  { return (((u32)module << 16) | ((u32)proto << 8) | option); }
+    static u32   buildID(u8 module, u8 proto, u8 option)           { return                     (((u32)module << 16) | ((u32)proto << 8) | option); }
     static u32   buildID(u8 module, u8 proto, u8 option, u8 func)  { return (((u32)func << 24) | ((u32)module << 16) | ((u32)proto << 8) | option); }
     static u8    getRcvr(u32 id)        { return (id >> 20) & 0x0f; }
     static u8    getModule(u32 id)      { return (id >> 16) & 0x0f; }
