@@ -69,6 +69,7 @@ u8 RFProtocolMJXQ::calcCheckSum(void)
     return sum;
 }
 
+#define BABS(X)         (((X) < 0) ? -(u8)(X) : (X))
 #define LIMIT_CHAN(X)   (X < CHAN_MIN_VALUE ? CHAN_MIN_VALUE : (X > CHAN_MAX_VALUE ? CHAN_MAX_VALUE : X))
 
 #define PAN_TILT_COUNT  16   // for H26D - match stock tx timing
@@ -101,8 +102,16 @@ u8 RFProtocolMJXQ::calcPanTilt(void)
 //#define CHAN2TRIM(X) ((((X) & 0x80 ? 0xff - (X) : 0x80 + (X)) >> 1) + 0x00)
 #define CHAN2TRIM(X) (((X) & 0x80 ? (X) : 0x7f - (X)) >> 1)
 
+u8 RFProtocolMJXQ::convChannel(u8 num)
+{
+    s32 ch = LIMIT_CHAN(getControl(num));
+
+    return (u8) ((ch < 0 ? 0x80 : 0) | BABS(ch * 127 / CHAN_MAX_VALUE));
+}
+
 void RFProtocolMJXQ::sendPacket(u8 bind)
 {
+#if 1
     mPacketBuf[0] = getControl_8b(CH_THROTTLE);             // throttle
     mPacketBuf[1] = getControl_s8b(CH_RUDDER);              // rudder
     mPacketBuf[4] = 0x40;                                   // rudder does not work well with dyntrim
@@ -113,6 +122,18 @@ void RFProtocolMJXQ::sendPacket(u8 bind)
 
     mPacketBuf[3] = getControl_s8b(CH_AILERON);             // aileron
     mPacketBuf[6] = GET_FLAG(CHANNEL_HEADLESS, 1) ? 0x40 : CHAN2TRIM(mPacketBuf[3]); // trim aileron
+#else
+    mPacketBuf[0] = convChannel(CH_THROTTLE);             // throttle
+    mPacketBuf[0] = mPacketBuf[0] & 0x80 ? 0xff - mPacketBuf[0] : 0x80 + mPacketBuf[0];
+    mPacketBuf[1] = 0x80 ^ convChannel(CH_RUDDER);              // rudder
+    mPacketBuf[4] = 0x40;                                   // rudder does not work well with dyntrim
+    mPacketBuf[2] = 0x80 ^ convChannel(CH_ELEVATOR);            // elevator
+    // driven trims cause issues when headless is enabled
+    mPacketBuf[5] = GET_FLAG(CHANNEL_HEADLESS, 1) ? 0x40 : CHAN2TRIM(mPacketBuf[2]); // trim elevator
+
+    mPacketBuf[3] = 0x80 ^ convChannel(CH_AILERON);             // aileron
+    mPacketBuf[6] = GET_FLAG(CHANNEL_HEADLESS, 1) ? 0x40 : CHAN2TRIM(mPacketBuf[3]); // trim aileron
+#endif
 
     mPacketBuf[7] = mTxID[0];
     mPacketBuf[8] = mTxID[1];
@@ -132,14 +153,20 @@ void RFProtocolMJXQ::sendPacket(u8 bind)
 
         case FORMAT_WLH08:
         case FORMAT_E010:
-            mPacketBuf[10] += GET_FLAG(CHANNEL_RTH, 0x02)
-                        | GET_FLAG(CHANNEL_HEADLESS, 0x01);
+            mPacketBuf[10] = mPacketBuf[10]                 |
+                             GET_FLAG(CHANNEL_RTH, 0x02)    |
+                             GET_FLAG(CHANNEL_HEADLESS, 0x01);
             if (!bind) {
-                mPacketBuf[14] = 0x00    // 0x04 : high rate
-                           | GET_FLAG(CHANNEL_FLIP, 0x01)
-                           | GET_FLAG(CHANNEL_PICTURE, 0x08)
-                           | GET_FLAG(CHANNEL_VIDEO, 0x10)
-                           | GET_FLAG_INV(CHANNEL_LED, 0x20); // air/ground mode
+                mPacketBuf[14] = GET_FLAG(CHANNEL_FLIP, 0x01);
+                if (getProtocolOpt() == FORMAT_WLH08) {
+                    mPacketBuf[14] = mPacketBuf[14]         |
+                            GET_FLAG(CHANNEL_PICTURE, 0x08) |
+                            GET_FLAG(CHANNEL_VIDEO, 0x10)   |
+                            GET_FLAG_INV(CHANNEL_LED, 0x20);    // air/ground mode
+                } else {
+                    mPacketBuf[14] = mPacketBuf[14]         |
+                            GET_FLAG(CH_AUX1, 0x04);            // 0x04 : high rate
+                }
             }
             break;
 

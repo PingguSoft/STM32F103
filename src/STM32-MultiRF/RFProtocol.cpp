@@ -158,7 +158,7 @@ u8 RFProtocol::getControl_s8b(u8 ch)
 	u8 ret;
 
 	ret = getControl_8b(ch);
-	return (ch < 128 ? 127 - ret : ret);
+	return (ret < 128 ? 127 - ret : ret);
 }
 
 u8 RFProtocol::isStickMoved(u8 init)

@@ -44,6 +44,7 @@ private:
     void init1(void);
     void init2(void);
     void initTxID(void);
+    u8   convChannel(u8 num);
 
 // variables
     DeviceNRF24L01  mDev;

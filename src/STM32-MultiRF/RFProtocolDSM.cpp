@@ -555,9 +555,9 @@ NO_INLINE static void parse_telemetry_packet()
 #endif
 
 
-#define CH1_CH2_DELAY 4000  // Time between write of channel 1 and channel 2
+#define CH1_CH2_DELAY 4010  // Time between write of channel 1 and channel 2
 #define WRITE_DELAY   1550  // Time after write to verify write complete
-#define READ_DELAY     400  // Time before write to check read state, and switch channel
+#define READ_DELAY     600  // Time before write to check read state, and switch channel
 
 u16 RFProtocolDSM::dsm2_cb(u32 now, u32 expected)
 {

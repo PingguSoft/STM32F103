@@ -266,6 +266,7 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
         if (200 < val && val < 1850) {
             rc[i] = val;
         } else {
+            LOG(F("INVALID- %d=>%d\n"), i, val);
             return 0;
         }
     }
