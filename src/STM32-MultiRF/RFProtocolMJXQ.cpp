@@ -288,7 +288,12 @@ u16 RFProtocolMJXQ::callState(u32 now, u32 expected)
 void RFProtocolMJXQ::initTxID(void)
 {
     u32 id   = getControllerID();
-    u32 lfsr = id;
+    u32 lfsr = 0xb2c54a2ful;
+
+    for (int i = 0; i < 4; ++i) {
+        rand32_r(&lfsr, (id & 0xff));
+        id >>= 8;
+    }
 
     __PRINT_FUNC__;
     // Pump zero bytes for LFSR to diverge more

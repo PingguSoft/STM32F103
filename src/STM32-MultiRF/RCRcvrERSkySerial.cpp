@@ -142,13 +142,13 @@ static const PROGMEM struct tbl TBL_CNV[] = {
     { MODE_KN,     TX_NRF24L01, 255 },
     { MODE_SYMAX,  TX_NRF24L01, RFProtocol::PROTO_NRF24L01_SYMAX },
     { MODE_SLT,    TX_NRF24L01, 255 },
-    { MODE_CX10,   TX_NRF24L01, 255 },
+    { MODE_CX10,   TX_NRF24L01, RFProtocol::PROTO_NRF24L01_CX10  },
     { MODE_CG023,  TX_NRF24L01, 255 },
     { MODE_BAYANG, TX_NRF24L01, 255 },
     { MODE_FRSKYX, TX_CC2500,   255 },
     { MODE_ESKY,   TX_CC2500,   255 },
     { MODE_MT99XX, TX_NRF24L01, 255 },
-    { MODE_MJXQ,   TX_NRF24L01, RFProtocol::PROTO_NRF24L01_MJXQ },
+    { MODE_MJXQ,   TX_NRF24L01, RFProtocol::PROTO_NRF24L01_MJXQ  },
     { MODE_SHENQI, TX_NRF24L01, 255 },
     { MODE_FY326,  TX_NRF24L01, 255 },
     { MODE_SFHSS,  TX_CC2500,   255 },
@@ -248,6 +248,34 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
         func |= FUNC_POWER_HI;
     }
 
+    // parsing channels
+    u8 *p  = data + 3;
+    s8 dec = -3;
+
+    // 11 bit * 16 channel
+    for (u8 i = 0; i < CH_CNT; i++) {
+        dec += 3;
+        if (dec >= 8) {
+            dec -= 8;
+            p++;
+        }
+        p++;
+
+        u32 val = get32(p);
+        val = (val >> dec) & 0x7ff;
+        if (200 < val && val < 1850) {
+            rc[i] = val;
+        } else {
+            return 0;
+        }
+    }
+
+    for (u8 i = 0; i < CH_CNT; i++) {
+        u16 val = constrain(rc[i], 200, 1845);
+        sRC[i] =  map(val, 200, 1845, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
+    }
+
+    // parsing protocols
     u8 proto  = data[1] & 0x1f;          // 5 bit
     u8 sub    = (data[2] >> 4) & 0x07;   // 3 bit
     u8 rxnum  = data[2] & 0x0f;          // 4 bit
@@ -281,32 +309,6 @@ u32 RCRcvrERSkySerial::handlePacket(u8 *data, u8 size)
                 LOG(F("FINAL PROTO ERSKY = %x %x %x [%x]\n"), proto, sub, func, ret);
             }
         }
-    }
-
-    u8 *p  = data + 3;
-    s8 dec = -3;
-
-    // 11 bit * 16 channel
-    for (u8 i = 0; i < CH_CNT; i++) {
-        dec += 3;
-        if (dec >= 8) {
-            dec -= 8;
-            p++;
-        }
-        p++;
-
-        u32 val = get32(p);
-        val = (val >> dec) & 0x7ff;
-        if (200 < val && val < 1850) {
-            rc[i] = val;
-        } else {
-            return 0;
-        }
-    }
-
-    for (u8 i = 0; i < CH_CNT; i++) {
-        u16 val = constrain(rc[i], 200, 1845);
-        sRC[i] =  map(val, 200, 1845, CHAN_MIN_VALUE, CHAN_MAX_VALUE);
     }
 
     return ret;

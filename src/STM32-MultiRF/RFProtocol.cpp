@@ -53,12 +53,12 @@ RFProtocol::~RFProtocol()
 void RFProtocol::handleTimerIntr(void)
 {
     if (mChild) {
-        Timer2.pause();
+//        Timer2.pause();
         u16 now = Timer2.getCount();
         now = now + mChild->callState(now, mNextTS);
         Timer2.setCompare(TIMER_CH1, now);
         mNextTS = now;
-        Timer2.resume();
+//        Timer2.resume();
     }
 }
 

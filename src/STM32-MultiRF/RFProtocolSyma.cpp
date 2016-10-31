@@ -214,7 +214,13 @@ void RFProtocolSyma::sendPacket(u8 bind)
 
 void RFProtocolSyma::initRxTxAddr(void)
 {
-    u32 lfsr = getControllerID();
+    u32 id   = getControllerID();
+    u32 lfsr = 0xb2c54a2ful;
+
+    for (int i = 0; i < 4; ++i) {
+        rand32_r(&lfsr, (id & 0xff));
+        id >>= 8;
+    }
 
     // Pump zero bytes for LFSR to diverge more
     for (u8 i = 0; i < sizeof(lfsr); ++i)

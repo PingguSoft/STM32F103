@@ -30,6 +30,7 @@
 #include "RFProtocolHubsan.h"
 #include "RFProtocolFlysky.h"
 #include "RFProtocolMJXQ.h"
+#include "RFProtocolCX10.h"
 #include "RCRcvrPPM.h"
 #include "RCRcvrERSkySerial.h"
 #include "Telemetry.h"
@@ -108,6 +109,10 @@ static u8 initProtocol(u32 id)
 
                 case RFProtocol::PROTO_NRF24L01_MJXQ:
                     mRFProto = new RFProtocolMJXQ(id);
+                    break;
+
+                case RFProtocol::PROTO_NRF24L01_CX10:
+                    mRFProto = new RFProtocolCX10(id);
                     break;
 /*
                 case RFProtocol::PROTO_NRF24L01_V2x2:
@@ -197,6 +202,13 @@ void simul_setup()
 //    conf.dwProtoID   = RFProtocol::buildID(TX_CYRF6936, RFProtocol::PROTO_CYRF6936_DEVO, 0);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_SYMAX, 0);
 //    conf.dwProtoID   = RFProtocol::buildID(TX_NRF24L01, RFProtocol::PROTO_NRF24L01_YD717, 1);
+
+// STM32 unique device ID
+//  uint16 *idBase0 =  (uint16 *) (0x1FFFF7E8);
+//  uint16 *idBase1 =  (uint16 *) (0x1FFFF7E8+0x02);
+//  uint32 *idBase2 =  (uint32 *) (0x1FFFF7E8+0x04);
+//  uint32 *idBase3 =  (uint32 *) (0x1FFFF7E8+0x08);
+
     conf.dwConID     = 0x12345678;
     conf.ucPower     = TXPOWER_10mW;
 
