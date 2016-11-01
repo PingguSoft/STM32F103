@@ -292,10 +292,14 @@ void setup()
 {
     pinMode(PC13, OUTPUT);
 
+    // for serial data and telemetry
     Serial3.begin(100000, SERIAL_8E2);
+
+    // for debugging
     Serial.begin(115200);
     LOG(F("Start!!\n"));
 
+    // make serial3 priority high
     nvic_irq_set_priority(Serial3.c_dev()->irq_num, 5);
 
     mRcvr = new RCRcvrERSkySerial();
@@ -333,7 +337,13 @@ void loop()
                 initProtocol(pureID);
                 mSelProto = pureID;
                 if (mRFProto) {
-                    mRFProto->setControllerID(0x12345678);
+                    // STM32 unique device ID
+                    //  uint16 *idBase0 =  (uint16 *) (0x1FFFF7E8);
+                    //  uint16 *idBase1 =  (uint16 *) (0x1FFFF7E8+0x02);
+                    //  uint32 *idBase2 =  (uint32 *) (0x1FFFF7E8+0x04);
+                    //  uint32 *idBase3 =  (uint32 *) (0x1FFFF7E8+0x08);
+                    u32 *idBase3 = (u32*)(0x1FFFF7E8 + 0x08);
+                    mRFProto->setControllerID(*idBase3);
                     mRFProto->init(func & FUNC_AUTO_BIND);
                 }
             } else {
@@ -341,6 +351,7 @@ void loop()
                     mRFProto->init(1);
                 }
             }
+
             if (mRFProto) {
                 u8  power = TXPOWER_10mW;
                 if (func & FUNC_POWER_HI)
